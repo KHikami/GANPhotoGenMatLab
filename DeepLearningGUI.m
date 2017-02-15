@@ -1,5 +1,7 @@
 function varargout = DeepLearningGUI(varargin)
+
 % DEEPLEARNINGGUI MATLAB code for DeepLearningGUI.fig
+% you run this!!! not the .fig file!!! (Kept running into errors ^^")
 %      DEEPLEARNINGGUI, by itself, creates a new DEEPLEARNINGGUI or raises the existing
 %      singleton*.
 %
@@ -22,7 +24,7 @@ function varargout = DeepLearningGUI(varargin)
 
 % Edit the above text to modify the response to help DeepLearningGUI
 
-% Last Modified by GUIDE v2.5 14-Feb-2017 10:58:24
+% Last Modified by GUIDE v2.5 15-Feb-2017 11:09:11
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -79,8 +81,25 @@ function train_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+%re-activate all the axes~
+cla(handles.paintedImagePhoto);
+set(handles.paintedImagePhoto, 'Visible', 'off');
+axis off;
+set(handles.colorMapPhoto, 'Visible', 'on');
+set(handles.shapeMapPhoto, 'Visible', 'on');
+
+%load the selected image (right now hardcoded to a photo in file)
+ImToTrain = imread('GANPhotoGenMatLab\GoogleImages\GoogleVDay.jpg');
+
 %fill in the color map and shape map along with statistics for overall
 %process
+ImColorMap = ColorMap(ImToTrain);
+axes(handles.colorMapPhoto);
+imshow(ImColorMap, []);
+
+ImShapeMap = ShapeMap(ImToTrain);
+axes(handles.shapeMapPhoto);
+imshow(ImShapeMap, []);
 
 %also associate label with the generated training model
 %handles is currently empty at this point... not too sure how to initialize
@@ -92,7 +111,25 @@ function draw_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-%returns the painted image generated
+%re-activate or clear all the axes we don't want to use
+set(handles.paintedImagePhoto, 'Visible', 'on');
+
+cla(handles.colorMapPhoto);
+set(handles.colorMapPhoto, 'Visible', 'off');
+axis off;
+
+cla(handles.shapeMapPhoto);
+set(handles.shapeMapPhoto, 'Visible', 'off');
+axis off;
+
+%returns the painted image generated (right now is just returning the photo
+%I already have on file)
+testLabel = 'GANPhotoGenMatLab\GoogleImages\GoogleVDay.jpg';
+
+ImToPaint = GenerateImage(testLabel);
+
+axes(handles.paintedImagePhoto);
+imshow(ImToPaint, []);
 
 set(handles.statusText, 'String', 'Image Generation Complete');
 
@@ -109,22 +146,65 @@ handles.data.trainingFileName = ' ';
 handles.data.numberOfIterations = 0;
 handles.data.trainingLabel = 'random';
 handles.data.drawingLabel = ' ';
+handles.data.trainingMode = 1;
 
 set(handles.statusText, 'String', 'Ready for Selection');
+set(handles.trainOrDrawUnitGroup, 'SelectedObject', handles.trainingRadioButton);
 
+disableDrawingFields(handles);
+
+set(handles.paintedImagePhoto, 'visible', 'off');
+axis off;
+set(handles.colorMapPhoto, 'visible', 'off');
+axis off;
+set(handles.shapeMapPhoto, 'visible', 'off');
+axis off;
 % Update handles structure
 guidata(handles.figure1, handles);
 
-function unitgroup_SelectionChangedFcn(hObject, eventdata, handles)
+function trainOrDrawUnitGroup_SelectionChangedFcn(hObject, eventdata, handles)
 % hObject    handle to the selected object in unitgroup 
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 if (hObject == handles.trainingRadioButton)
     %Make Training data fields selectable
+    enableTrainingFields(handles);
+    disableDrawingFields(handles);
+    
 else
-    %Make draw data fields
+    %Make draw data fields editable but training fields not editable
+    disableTrainingFields(handles);
+    enableDrawingFields(handles);
 end
+
+function disableDrawingFields(handles)
+set(handles.labelForImageToDraw, 'Enable', 'off');
+set(handles.numOfIterations, 'Enable', 'off');
+set(handles.draw, 'Enable', 'off');
+
+function enableDrawingFields(handles)
+set(handles.labelForImageToDraw, 'Enable', 'on');
+set(handles.numOfIterations, 'Enable', 'on');
+set(handles.draw, 'Enable', 'on');
+
+
+function enableTrainingFields(handles)
+    handles.data.trainingMode = 1;
+    set(handles.trainingImage, 'Enable', 'on');
+    set(handles.browseForTrainImage, 'Enable', 'on');
+    set(handles.labelForTrainingImage, 'Enable', 'on');
+    set(handles.train, 'Enable', 'on');
+
+function disableTrainingFields(handles)
+%disables all the fields for Training
+    handles.data.trainingMode = 0;
+    set(handles.trainingImage, 'Enable', 'off');
+    set(handles.browseForTrainImage, 'Enable', 'off');
+    set(handles.labelForTrainingImage, 'Enable', 'off');
+    set(handles.train, 'Enable', 'off');
+    
+
 
 function labelForImageToDraw_Callback(hObject, eventdata, handles)
 % hObject    handle to labelForImageToDraw (see GCBO)
@@ -205,7 +285,8 @@ function browseForTrainImage_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-%create browse image functionality?
+%create browse image functionality/create pop up window to select a given
+%image
 
 function numOfIterations_Callback(hObject, eventdata, handles)
 % hObject    handle to numOfIterations (see GCBO)
