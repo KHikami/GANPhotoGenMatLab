@@ -81,6 +81,11 @@ function train_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+%retrieve the data needed for storage
+tFileName = handles.data.trainingImageFileName;
+tLabel = handles.data.labelForTrainingImage;
+
+
 %re-activate all the axes~
 cla(handles.paintedImagePhoto);
 set(handles.paintedImagePhoto, 'Visible', 'off');
@@ -88,8 +93,16 @@ axis off;
 set(handles.colorMapPhoto, 'Visible', 'on');
 set(handles.shapeMapPhoto, 'Visible', 'on');
 
-%load the selected image (right now hardcoded to a photo in file)
+%using a grayscale axes just for debugging of the filters
+set(handles.grayScalePhoto, 'Visible', 'on');
+
+%load the selected image (right now hardcoded to a photo in file) (but
+%should take in tFileName)
 ImToTrain = imread('GANPhotoGenMatLab\GoogleImages\GoogleVDay.jpg');
+
+GrayScaleIm = rgb2gray(ImToTrain);
+axes(handles.grayScalePhoto);
+imshow(GrayScaleIm, []);
 
 %fill in the color map and shape map along with statistics for overall
 %process
@@ -142,9 +155,9 @@ end
 
 %create handles for stuff that will change
 
-handles.data.trainingFileName = ' ';
+handles.data.trainingImageFileName = ' ';
 handles.data.numberOfIterations = 0;
-handles.data.trainingLabel = 'random';
+handles.data.labelForTrainingImage = 'random';
 handles.data.drawingLabel = ' ';
 handles.data.trainingMode = 1;
 
@@ -235,8 +248,11 @@ function labelForTrainingImage_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of labelForTrainingImage as text
-%        str2double(get(hObject,'String')) returns contents of labelForTrainingImage as a double
+%store the label for the given training image
+handles.data.labelForTrainingImage = get(hObject, 'String');
+
+guidata(hObject,handles);
+
 
 
 % --- Executes during object creation, after setting all properties.
@@ -255,7 +271,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-
+%trainingImage = the file selected
 function trainingImage_Callback(hObject, eventdata, handles)
 % hObject    handle to trainingImage (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -263,6 +279,10 @@ function trainingImage_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of trainingImage as text
 %        str2double(get(hObject,'String')) returns contents of trainingImage as a double
+
+%store the location of the file selected
+handles.data.trainingImageFileName = get(hObject, 'String');
+guidata(hObject, handles);
 
 
 
