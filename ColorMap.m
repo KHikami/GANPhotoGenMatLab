@@ -23,6 +23,6 @@ pixelBlockW = ceil(origW/sizeOfSections); %num of pixel blocks in X direction
 colorFilter = zeros(sizeOfSections, sizeOfSections); 
 %generates a new filter will all 0s in the size of our patch
 
-
+%look into colorbar/colormap
 
 Result = Image;

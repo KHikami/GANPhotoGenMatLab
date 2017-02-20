@@ -24,7 +24,7 @@ function varargout = DeepLearningGUI(varargin)
 
 % Edit the above text to modify the response to help DeepLearningGUI
 
-% Last Modified by GUIDE v2.5 15-Feb-2017 11:09:11
+% Last Modified by GUIDE v2.5 20-Feb-2017 11:03:28
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -85,11 +85,10 @@ function train_Callback(hObject, eventdata, handles)
 tFileName = handles.data.trainingImageFileName;
 tLabel = handles.data.labelForTrainingImage;
 
+clearDrawResults(handles);
+clearIdentifyResults(handles);
 
 %re-activate all the axes~
-cla(handles.paintedImagePhoto);
-set(handles.paintedImagePhoto, 'Visible', 'off');
-axis off;
 set(handles.colorMapPhoto, 'Visible', 'on');
 set(handles.shapeMapPhoto, 'Visible', 'on');
 
@@ -114,9 +113,33 @@ ImShapeMap = ShapeMap(ImToTrain);
 axes(handles.shapeMapPhoto);
 imshow(ImShapeMap, []);
 
+%need storage for the maps against the given label
+
 %also associate label with the generated training model
 %handles is currently empty at this point... not too sure how to initialize
 set(handles.statusText, 'String', 'Image Training Complete');
+
+function clearTrainResults(handles)
+cla(handles.colorMapPhoto);
+set(handles.colorMapPhoto, 'Visible', 'off');
+axis off;
+
+cla(handles.shapeMapPhoto);
+set(handles.shapeMapPhoto, 'Visible', 'off');
+axis off;
+
+cla(handles.grayScalePhoto);
+set(handles.grayScalePhoto, 'Visible', 'off');
+axis off;
+
+
+function clearDrawResults(handles)
+cla(handles.paintedImagePhoto);
+set(handles.paintedImagePhoto, 'Visible', 'off');
+axis off;
+
+function clearIdentifyResults(handles)
+set(handles.labelOfObjectBeingIdentified, 'String', '');
 
 % --- Executes on button press in draw.
 function draw_Callback(hObject, eventdata, handles)
@@ -127,19 +150,18 @@ function draw_Callback(hObject, eventdata, handles)
 %re-activate or clear all the axes we don't want to use
 set(handles.paintedImagePhoto, 'Visible', 'on');
 
-cla(handles.colorMapPhoto);
-set(handles.colorMapPhoto, 'Visible', 'off');
-axis off;
-
-cla(handles.shapeMapPhoto);
-set(handles.shapeMapPhoto, 'Visible', 'off');
-axis off;
+clearTrainResults(handles);
+clearIdentifyResults(handles);
 
 %returns the painted image generated (right now is just returning the photo
 %I already have on file)
 testLabel = 'GANPhotoGenMatLab\GoogleImages\GoogleVDay.jpg';
 
 ImToPaint = GenerateImage(testLabel);
+
+%loops over the number of iterations and runs object identifier against the
+%generated image. keeps memory of previous generated image if new generated
+%image has a lower score than previous.
 
 axes(handles.paintedImagePhoto);
 imshow(ImToPaint, []);
@@ -165,13 +187,22 @@ set(handles.statusText, 'String', 'Ready for Selection');
 set(handles.trainOrDrawUnitGroup, 'SelectedObject', handles.trainingRadioButton);
 
 disableDrawingFields(handles);
+disableIdentifyFields(handles);
 
+set(handles.identifiedObjectPhoto, 'visible', 'off');
+axis off;
+set(handles.identifyScoreMatrix, 'visible', 'off');
+axis off;
 set(handles.paintedImagePhoto, 'visible', 'off');
 axis off;
 set(handles.colorMapPhoto, 'visible', 'off');
 axis off;
 set(handles.shapeMapPhoto, 'visible', 'off');
 axis off;
+set(handles.grayScalePhoto, 'visible', 'off');
+axis off;
+
+
 % Update handles structure
 guidata(handles.figure1, handles);
 
@@ -184,12 +215,34 @@ if (hObject == handles.trainingRadioButton)
     %Make Training data fields selectable
     enableTrainingFields(handles);
     disableDrawingFields(handles);
+    disableIdentifyFields(handles);
     
+elseif (hObject == handles.identifyRadioButton)
+    disableDrawingFields(handles);
+    disableTrainingFields(handles);
+    enableIdentifyFields(handles);
 else
     %Make draw data fields editable but training fields not editable
     disableTrainingFields(handles);
+    disableIdentifyFields(handles);
     enableDrawingFields(handles);
 end
+
+function enableIdentifyFields(handles)
+set(handles.identifyImage, 'Enable', 'on');
+set(handles.identifyBrowse, 'Enable', 'on');
+set(handles.identifyLabel, 'Enable', 'on');
+set(handles.identifyButton, 'Enable', 'on');
+
+function disableIdentifyFields(handles)
+set(handles.identifyImage, 'Enable', 'off');
+set(handles.identifyBrowse, 'Enable', 'off');
+set(handles.identifyLabel, 'Enable', 'off');
+set(handles.identifyButton, 'Enable', 'off');
+
+emptyString = '';
+set(handles.identifyLabel, 'String', emptyString);
+set(handles.identifyImage, 'String', emptyString);
 
 function disableDrawingFields(handles)
 set(handles.labelForImageToDraw, 'Enable', 'off');
@@ -327,6 +380,74 @@ guidata(hObject, handles);
 % --- Executes during object creation, after setting all properties.
 function numOfIterations_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to numOfIterations (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function identifyImage_Callback(hObject, eventdata, handles)
+% hObject    handle to identifyImage (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+handles.data.imageToIdentify = get(hObject,'String');
+guidata(hObject, handles);
+
+
+% --- Executes during object creation, after setting all properties.
+function identifyImage_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to identifyImage (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in identifyBrowse.
+function identifyBrowse_Callback(hObject, eventdata, handles)
+% hObject    handle to identifyBrowse (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in identifyButton.
+function identifyButton_Callback(hObject, eventdata, handles)
+% hObject    handle to identifyButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+image = handles.data.imageToIdentify;
+label = handles.data.labelToIdentify;
+%use label to retrieve related color map and shape map. if none exist =>
+%set status text to be no related template in memory. please train first.
+
+%uses objectIdentifier against passed in image and identify hit with score
+
+set(handles.labelOfObjectBeingIdentified, 'String', label);
+set(handles.statusText, 'String', 'Object Identified');
+
+function identifyLabel_Callback(hObject, eventdata, handles)
+% hObject    handle to identifyLabel (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+handles.data.labelToIdentify = get(hObject,'String');
+guidata(hObject,handles);
+
+
+% --- Executes during object creation, after setting all properties.
+function identifyLabel_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to identifyLabel (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
