@@ -17,6 +17,8 @@ miniMapW = ceil(origW/sizeOfSections); %num of pixel blocks in X direction
 %Resulting color map will be the downsized version re-expanded (the 1
 %square gets mapped to collection of 64 squares)
 
+%error here about the dimensions of the matrices being concatenated are not
+%consistent.
 colorStructure = ['Red'; 'Orange'; 'Yellow'; 'Blue'; 'Pink'; 'Green'; 'Purple'; 'Brown'; 'Black'; 'White'];
 numOfColors = size(colorStructure);
 colorMiniMap = zeros(miniMapH, miniMapW, numOfColors); 
