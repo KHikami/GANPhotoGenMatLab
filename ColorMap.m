@@ -19,7 +19,7 @@ miniMapW = ceil(origW/sizeOfSections); %num of pixel blocks in X direction
 
 %error here about the dimensions of the matrices being concatenated are not
 %consistent.
-colorStructure = ['Red'; 'Orange'; 'Yellow'; 'Blue'; 'Pink'; 'Green'; 'Purple'; 'Brown'; 'Black'; 'White'];
+colorStructure = ['White' 'Black' 'Gray' 'Red' 'Pink' 'Orange' 'Brown' 'Yellow' 'Green' 'Blue' 'Purple' 'Magenta'];
 numOfColors = size(colorStructure);
 colorMiniMap = zeros(miniMapH, miniMapW, numOfColors); 
 
@@ -54,6 +54,6 @@ end
 %m by n, to then fit an overal size matrix of [mm nn], with setting
 %'distinct'
 
-%keeping the 10 separate layers for probability calculation later...
+%keeping the 11 separate layers for probability calculation later...
 
 Result = Image;
