@@ -97,7 +97,7 @@ set(handles.grayScalePhoto, 'Visible', 'on');
 
 %load the selected image (right now hardcoded to a photo in file) (but
 %should take in tFileName)
-ImToTrain = imread('GANPhotoGenMatLab\GoogleImages\GoogleVDay.jpg');
+ImToTrain = imread(tFileName);
 
 GrayScaleIm = rgb2gray(ImToTrain);
 axes(handles.grayScalePhoto);
@@ -177,11 +177,14 @@ end
 
 %create handles for stuff that will change
 
-handles.data.trainingImageFileName = ' ';
+%initialize all data fields
+handles.data.trainingImageFileName = '';
 handles.data.numberOfIterations = 0;
-handles.data.labelForTrainingImage = 'random';
-handles.data.drawingLabel = ' ';
-handles.data.trainingMode = 1;
+handles.data.labelForTrainingImage = '';
+handles.data.drawingLabel = '';
+handles.data.imageToIdentify = '';
+handles.data.labelToIdentify = '';
+
 
 set(handles.statusText, 'String', 'Ready for Selection');
 set(handles.trainOrDrawUnitGroup, 'SelectedObject', handles.trainingRadioButton);
@@ -269,6 +272,9 @@ function disableTrainingFields(handles)
     set(handles.browseForTrainImage, 'Enable', 'off');
     set(handles.labelForTrainingImage, 'Enable', 'off');
     set(handles.train, 'Enable', 'off');
+    
+    set(handles.trainingImage, 'String', '');
+    set(handles.labelForTrainingImage, 'String', '');
     
 
 
@@ -358,6 +364,17 @@ function browseForTrainImage_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+%might want to filter uigetfile to only grab image files
+%also need to append filename to pathname to then be able to retrieve the
+%file
+[tempFileName,tempPathName] = uigetfile({'*.jpg'; '*.jpeg'; '*.bmp'; '*.png'}, 'File Selector');
+if(not(tempFileName == 0))
+    handles.data.trainingImageFileName = strcat(tempPathName, tempFileName);
+    set(handles.trainingImage, 'String', strcat(tempPathName,tempFileName));
+end
+
+guidata(hObject,handles);
+
 %create browse image functionality/create pop up window to select a given
 %image
 
@@ -419,6 +436,14 @@ function identifyBrowse_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+[tempFileName,tempPathName] = uigetfile({'*.jpg'; '*.jpeg'; '*.bmp'; '*.png'}, 'File Selector');
+if(not(tempFileName == 0))
+    handles.data.imageToIdentify = strcat(tempPathName, tempFileName);
+    set(handles.identifyImage, 'String', strcat(tempPathName,tempFileName));
+end
+
+guidata(hObject,handles);
+
 
 % --- Executes on button press in identifyButton.
 function identifyButton_Callback(hObject, eventdata, handles)
@@ -430,11 +455,21 @@ image = handles.data.imageToIdentify;
 label = handles.data.labelToIdentify;
 %use label to retrieve related color map and shape map. if none exist =>
 %set status text to be no related template in memory. please train first.
+returnText = 'Object Identified';
+
+set(handles.identifiedObjectPhoto, 'Visible', 'on');
+
+clearTrainResults(handles);
+clearDrawResults(handles);
+
+ImToIdentify = imread(image);
+axes(handles.identifiedObjectPhoto);
+imshow(ImToIdentify, []);
 
 %uses objectIdentifier against passed in image and identify hit with score
 
 set(handles.labelOfObjectBeingIdentified, 'String', label);
-set(handles.statusText, 'String', 'Object Identified');
+set(handles.statusText, 'String', returnText);
 
 function identifyLabel_Callback(hObject, eventdata, handles)
 % hObject    handle to identifyLabel (see GCBO)

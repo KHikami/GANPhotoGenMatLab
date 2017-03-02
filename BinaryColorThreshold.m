@@ -6,77 +6,74 @@ function [value] = BinaryColorThreshold(colorVar, input)
 
 %Using HSV (See google doc Color Ranges and Values for new ranges)
 
-hsvInput = rgb2hsv(input);
+hsvInput = rgb2hsv(input ./ 255);
 
 %hue values are returned as a decimal from 0-1 so multiplying by 360 to be
 %integer values that hue table uses
-hsvInput = hsvInput(:,1) .* 360;
+hsvInput(:,:,1) = hsvInput(:,:,1) .* 360;
 
 switch(colorVar)
     case 'White'
-        resultIndices = find(isWhite(hsvInput));
+        resultIndices = find(and(hsvInput(:,:,3) > 0.95, hsvInput(:,:,2) < 0.1));
     case 'Black'
-        resultIndices = find(isBlack(hsvInput));
+        resultIndices = find(and(hsvInput(:,:,3) < 0.2, hsvInput(:,:,2) < 0.1));
     case 'Gray'
-        resultIndices = find(isGray(hsvInput) && not(isBlack(hsvInput)&& not(isWhite(hsvInput))));
+        whiteIndices = find(and(hsvInput(:,:,3) > 0.95, hsvInput(:,:,2) < 0.1));
+        %want those that are gray but not light enough to be white
+        resultIndices = setdiff(find(and(hsvInput(:,:,3) >= 0.2, hsvInput(:,:,2) < 0.1)), whiteIndices);
     case 'Red'
-        validIndices = find(not(isBlack(hsvInput)) && not(isWhite(hsvInput)) && not(isGray(hsvInput)));
-        hueIndices = find(hsvInput(:,1) < 30 || hsvInput(:,1) >= 345);
-        %already know it's greater than or equal to 0.2 for value and >=30 for
-        %saturation
-        lightIndices = find(hsvInput(:,3) < 0.8);
-        resultIndices = setdiff(lightIndices,(setdiff(validIndices,hueIndices)));
+        hueIndices = find(or(hsvInput(:,:,1) < 30, hsvInput(:,:,1) >= 345));
+        lightIndices = find(hsvInput(:,:,3) >= 0.2);
+        satIndices = find(hsvInput(:,:,2) >= 0.5);
+        resultIndices =intersect(intersect(hueIndices,lightIndices),satIndices);
     case 'Pink'
-        validIndices = find(not(isBlack(hsvInput)) && not(isWhite(hsvInput)) && not(isGray(hsvInput)));
-        hueIndices = find(hsvInput(:,1) < 30 || hsvInput(:,1) >= 345);
-        lightIndices = find(hsvInput(:,3) >= 0.8);
-        resultIndices = setdiff(lightIndices,(setdiff(validIndices,hueIndices)));
+        hueIndices = find(or(hsvInput(:,:,1) < 30, hsvInput(:,:,1) >= 345));
+        lightIndices = find(hsvInput(:,:,3) >= 0.2);
+        satIndices = find(and(hsvInput(:,:,2) < 0.5, hsvInput(:,:,2) >= 0.1));
+        resultIndices =intersect(intersect(hueIndices,lightIndices),satIndices);
     case 'Orange'
-        validIndices = find(not(isBlack(hsvInput)) && not(isWhite(hsvInput)) && not(isGray(hsvInput)));
-        hueIndices = find(hsvInput(:,1) >= 30 && hsvInput(:,1) < 60);
-        %already know light is less than or equal to 95
-        lightIndices = find(hsvInput(:,3) >= 0.45);
-        resultIndices = setdiff(lightIndices,(setdiff(validIndices,hueIndices)));
+        hueIndices = find(and(hsvInput(:,:,1) < 60, hsvInput(:,:,1) >= 30));
+        lightIndices = find(hsvInput(:,:,3) >= 0.2);
+        satIndices = find(hsvInput(:,:,2) >= 0.5);
+        resultIndices =intersect(intersect(hueIndices,lightIndices),satIndices);
     case 'Brown'
-        validIndices = find(not(isBlack(hsvInput)) && not(isWhite(hsvInput)) && not(isGray(hsvInput)));
-        hueIndices = find(hsvInput(:,1) >= 30 && hsvInput(:,1) < 60);
-        %already know light is greater than  or equal to 20
-        lightIndices = find(hsvInput(:,3) < 0.45);
-        resultIndices = setdiff(lightIndices,(setdiff(validIndices,hueIndices)));
+        hueIndices = find(and(hsvInput(:,:,1) < 60, hsvInput(:,:,1) >= 30));
+        lightIndices = find(hsvInput(:,:,3) >= 0.2);
+        satIndices = find(and(hsvInput(:,:,2) < 0.5, hsvInput(:,:,2) >= 0.1));
+        resultIndices =intersect(intersect(hueIndices,lightIndices),satIndices);
     case 'Yellow'
-        %TO-DO
+        hueIndices = find(and(hsvInput(:,:,1) < 75, hsvInput(:,:,1) >= 60));
+        lightIndices = find(hsvInput(:,:,3) >= 0.2);
+        satIndices = find(hsvInput(:,:,2) >= 0.1);
+        resultIndices =intersect(intersect(hueIndices,lightIndices),satIndices);
     case 'Green'
-        %TO-DO
+        hueIndices = find(and(hsvInput(:,:,1) < 165, hsvInput(:,:,1) >= 75));
+        lightIndices = find(hsvInput(:,:,3) >= 0.2);
+        satIndices = find(hsvInput(:,:,2) >= 0.1);
+        resultIndices =intersect(intersect(hueIndices,lightIndices),satIndices);
     case 'Blue'
-        %TO-DO
+        hueIndices = find(and(hsvInput(:,:,1) < 270, hsvInput(:,:,1) >= 165));
+        lightIndices = find(hsvInput(:,:,3) >= 0.2);
+        satIndices = find(hsvInput(:,:,2) >= 0.1);
+        resultIndices =intersect(intersect(hueIndices,lightIndices),satIndices);
     case 'Purple'
-        %TO-DO
+        hueIndices = find(and(hsvInput(:,:,1) < 300, hsvInput(:,:,1) >= 270));
+        lightIndices = find(hsvInput(:,:,3) >= 0.2);
+        satIndices = find(hsvInput(:,:,2) >= 0.1);
+        resultIndices =intersect(intersect(hueIndices,lightIndices),satIndices);
     case 'Magenta'
-        %TO-DO
+        hueIndices = find(and(hsvInput(:,:,1) < 345, hsvInput(:,:,1) >= 300));
+        lightIndices = find(hsvInput(:,:,3) >= 0.2);
+        satIndices = find(hsvInput(:,:,2) >= 0.1);
+        resultIndices =intersect(intersect(hueIndices,lightIndices),satIndices);
 end
-[h,w] = size(hsvInput);
+[h,w,z] = size(hsvInput);
 
-value = zeros(h,w);
+%have to put it into the size of the original because if not, it will warp
+%it into a h by w*z matrix :(
+results = zeros(h,w,z);
 
-value(resultIndices) = 1;
+results(resultIndices) = 1;
 
-function [bool] = isWhite(hsv)
-if(hsv(:,3) > 0.95)
-    bool = true;
-else
-    bool = false;
-end
+value = results(:,:,1);
 
-function [bool] = isBlack(hsv)
-if(hsv(:,3) < 0.2)
-    bool = true;
-else
-    bool = false;
-end
-
-function [bool] = isGray(hsv)
-if(hsv(:,2) < 0.3)
-    bool = true;
-else
-    bool = false;
-end

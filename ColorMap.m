@@ -19,8 +19,8 @@ miniMapW = ceil(origW/sizeOfSections); %num of pixel blocks in X direction
 
 %error here about the dimensions of the matrices being concatenated are not
 %consistent.
-colorStructure = ['White' 'Black' 'Gray' 'Red' 'Pink' 'Orange' 'Brown' 'Yellow' 'Green' 'Blue' 'Purple' 'Magenta'];
-numOfColors = size(colorStructure);
+colorStructure = {'White';'Black';'Gray';'Red';'Pink';'Orange';'Brown';'Yellow';'Green';'Blue';'Purple';'Magenta'};
+[colorH, numOfColors] = size(colorStructure);
 colorMiniMap = zeros(miniMapH, miniMapW, numOfColors); 
 
 for i = 1:numOfColors
@@ -30,19 +30,21 @@ for i = 1:numOfColors
    %I then map into resulting minimap for every 8 the trace of this 8 by 8
    %section
    
-   colorResult = BinaryColorThreshold(colorStructure(i), Image);
+   colorResult = BinaryColorThreshold(colorStructure{i}, Image);
    
    %grabs an array of 8 by 8 blocks from colorResult
-   colorBlock = im2col(colorResult,[sizeOfSection sizeOfSection], 'distinct');
+   colorBlock = im2col(colorResult,[sizeOfSections sizeOfSections], 'distinct');
    
    %does the trace/sum per colorBlock
    hitCount = sum(colorBlock);
    
+   %need to work on this part
+   
    %maps the sums of each block into the minimap shape
-   resultMiniMap = reshape(hitCount, miniMapH, miniMapW);
+   %resultMiniMap = reshape(hitCount, miniMapH, miniMapW);
    
    %store the minimap of the color subsection into colorMiniMap
-   colorMiniMap(:,:,i) = resultMiniMap;
+   %colorMiniMap(:,:,i) = resultMiniMap;
     
 end
 
