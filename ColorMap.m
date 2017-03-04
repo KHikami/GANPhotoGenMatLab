@@ -2,7 +2,7 @@
 
 function [ Result ] = ColorMap(Image)
 %turning the image into blobs of color :)
-[origH, origW] = size(Image);
+[origH, origW, origD] = size(Image);
 
 sizeOfSections = 8; %our pixel blocks square size :)
 
@@ -17,11 +17,11 @@ miniMapW = ceil(origW/sizeOfSections); %num of pixel blocks in X direction
 %Resulting color map will be the downsized version re-expanded (the 1
 %square gets mapped to collection of 64 squares)
 
-%error here about the dimensions of the matrices being concatenated are not
-%consistent.
+%color structure is in the form of a column matrix :/
 colorStructure = {'White';'Black';'Gray';'Red';'Pink';'Orange';'Brown';'Yellow';'Green';'Blue';'Purple';'Magenta'};
-[colorH, numOfColors] = size(colorStructure);
+[numOfColors,colorWidth] = size(colorStructure);
 colorMiniMap = zeros(miniMapH, miniMapW, numOfColors); 
+maxSum = zeros(miniMapH, miniMapW);
 
 for i = 1:numOfColors
    %for each of the number of colors I have, I'm going to check if the
@@ -35,16 +35,18 @@ for i = 1:numOfColors
    %grabs an array of 8 by 8 blocks from colorResult
    colorBlock = im2col(colorResult,[sizeOfSections sizeOfSections], 'distinct');
    
-   %does the trace/sum per colorBlock
+   %does the sum per colorBlock (according to the documentation it will
+   %only output sum per col)
    hitCount = sum(colorBlock);
    
    %need to work on this part
    
    %maps the sums of each block into the minimap shape
-   %resultMiniMap = reshape(hitCount, miniMapH, miniMapW);
+   resultMiniMap = reshape(hitCount, miniMapH, miniMapW);
    
    %store the minimap of the color subsection into colorMiniMap
-   %colorMiniMap(:,:,i) = resultMiniMap;
+   colorMiniMap(:,:,i) = resultMiniMap;
+   maxSum = maxSum + resultMiniMap;
     
 end
 
@@ -58,4 +60,7 @@ end
 
 %keeping the 11 separate layers for probability calculation later...
 
-Result = Image;
+for i = 1:numOfColors
+    colorMiniMap(:,:,i) = colorMiniMap(:,:,i)./maxSum;
+end
+Result = colorMiniMap;

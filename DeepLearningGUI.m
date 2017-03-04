@@ -104,10 +104,12 @@ axes(handles.grayScalePhoto);
 imshow(GrayScaleIm, []);
 
 %fill in the color map and shape map along with statistics for overall
-%process
+%process (Functions work on the small scale but won't work on the big
+%scale)
 ImColorMap = ColorMap(ImToTrain);
+PixelizedColorMap = Pixelize(ImColorMap);
 axes(handles.colorMapPhoto);
-imshow(ImColorMap, []);
+imshow(PixelizedColorMap);
 
 ImShapeMap = ShapeMap(ImToTrain);
 axes(handles.shapeMapPhoto);
@@ -140,6 +142,9 @@ axis off;
 
 function clearIdentifyResults(handles)
 set(handles.labelOfObjectBeingIdentified, 'String', '');
+cla(handles.identifiedObjectPhoto);
+set(handles.identifiedObjectPhoto, 'Visible', 'off');
+axis off;
 
 % --- Executes on button press in draw.
 function draw_Callback(hObject, eventdata, handles)
