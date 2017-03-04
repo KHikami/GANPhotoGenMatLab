@@ -6,7 +6,7 @@ function [value] = BinaryColorThreshold(colorVar, input)
 
 %Using HSV (See google doc Color Ranges and Values for new ranges)
 
-hsvInput = rgb2hsv(input ./ 255);
+hsvInput = rgb2hsv(input);
 
 %hue values are returned as a decimal from 0-1 so multiplying by 360 to be
 %integer values that hue table uses

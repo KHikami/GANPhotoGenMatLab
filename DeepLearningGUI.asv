@@ -103,13 +103,16 @@ GrayScaleIm = rgb2gray(ImToTrain);
 axes(handles.grayScalePhoto);
 imshow(GrayScaleIm, []);
 
+trainInfo = imfinfo();
+
 %fill in the color map and shape map along with statistics for overall
 %process (Functions work on the small scale but won't work on the big
 %scale)
 ImColorMap = ColorMap(ImToTrain);
 PixelizedColorMap = Pixelize(ImColorMap);%returning 0 for some reason :/
+test = PixelizedColorMap(1,1,:);
 axes(handles.colorMapPhoto);
-imshow(PixelizedColorMap/255);
+imshow(PixelizedColorMap);
 
 ImShapeMap = ShapeMap(ImToTrain);
 axes(handles.shapeMapPhoto);
