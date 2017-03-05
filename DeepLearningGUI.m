@@ -99,6 +99,8 @@ set(handles.grayScalePhoto, 'Visible', 'on');
 %should take in tFileName)
 ImToTrain = imread(tFileName);
 
+startTime = now;
+
 GrayScaleIm = rgb2gray(ImToTrain);
 axes(handles.grayScalePhoto);
 imshow(GrayScaleIm, []);
@@ -116,9 +118,9 @@ axes(handles.shapeMapPhoto);
 imshow(ImShapeMap, []);
 
 %need storage for the maps against the given label
+endTime = now;
+timeForTrainRun = endTime - startTime;
 
-%also associate label with the generated training model
-%handles is currently empty at this point... not too sure how to initialize
 set(handles.statusText, 'String', 'Image Training Complete');
 
 function clearTrainResults(handles)
@@ -140,6 +142,20 @@ cla(handles.paintedImagePhoto);
 set(handles.paintedImagePhoto, 'Visible', 'off');
 axis off;
 
+cla(handles.statsGraph1);
+cla(handles.statsGraph2);
+cla(handles.statsGraph3);
+cla(handles.statsGraph4);
+
+cla(handles.paintedScore);
+set(handles.paintedScore, 'Visible', 'off');
+axis off;
+
+set(handles.totalGen, 'String', '');
+set(handles.totalTrain, 'String', '');
+set(handles.avgGenTime, 'String', '');
+set(handles.avgTrainTime, 'String', '');
+
 function clearIdentifyResults(handles)
 set(handles.labelOfObjectBeingIdentified, 'String', '');
 cla(handles.identifiedObjectPhoto);
@@ -154,6 +170,7 @@ function draw_Callback(hObject, eventdata, handles)
 
 %re-activate or clear all the axes we don't want to use
 set(handles.paintedImagePhoto, 'Visible', 'on');
+set(handles.paintedScore, 'Visible', 'on');
 
 clearTrainResults(handles);
 clearIdentifyResults(handles);
@@ -162,8 +179,12 @@ clearIdentifyResults(handles);
 %I already have on file)
 testLabel = 'GANPhotoGenMatLab\GoogleImages\GoogleVDay.jpg';
 
+startTime = now;
+
 ImToPaint = GenerateImage(testLabel);
 
+endTime = now;
+timeForRun = endTime-startTime;
 %loops over the number of iterations and runs object identifier against the
 %generated image. keeps memory of previous generated image if new generated
 %image has a lower score than previous.
@@ -171,6 +192,13 @@ ImToPaint = GenerateImage(testLabel);
 axes(handles.paintedImagePhoto);
 imshow(ImToPaint, []);
 
+tempMatrix = ones(3,3);
+set(handles.paintedScore, 'Data', tempMatrix);
+
+set(handles.totalGen, 'String', 0);
+set(handles.totalTrain, 'String', 0);
+set(handles.avgGenTime, 'String', 0);
+set(handles.avgTrainTime, 'String', 0);
 set(handles.statusText, 'String', 'Image Generation Complete');
 
 % --------------------------------------------------------------------
@@ -190,6 +218,11 @@ handles.data.drawingLabel = '';
 handles.data.imageToIdentify = '';
 handles.data.labelToIdentify = '';
 
+%holds the memories of the object identifier
+handles.data.objectIdentifierMemory = '';
+
+%holds the memories fo the object generator
+handles.data.objectGeneratorMemory = '';
 
 set(handles.statusText, 'String', 'Ready for Selection');
 set(handles.trainOrDrawUnitGroup, 'SelectedObject', handles.trainingRadioButton);
@@ -202,6 +235,8 @@ axis off;
 set(handles.identifyScoreMatrix, 'visible', 'off');
 axis off;
 set(handles.paintedImagePhoto, 'visible', 'off');
+axis off;
+set(handles.paintedScore, 'visible', 'off');
 axis off;
 set(handles.colorMapPhoto, 'visible', 'off');
 axis off;
