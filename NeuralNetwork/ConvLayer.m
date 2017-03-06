@@ -45,8 +45,8 @@ classdef ConvLayer < handle
       object.layer_depth = layer_depth;
       object.stride_size = stride_size;
       
-      object.layer_dim = [input_dim(1)/stride_size(1), ...
-          input_dim(2)/stride_size(2), layer_depth];
+      object.layer_dim = [ceil(input_dim(1)/stride_size(1)), ...
+          ceil(input_dim(2)/stride_size(2)), layer_depth];
       object.int_kernel_dim = [prod([kernel_dim, input_dim(3)]), layer_depth];
       
       object.input_size = prod(input_dim);
@@ -77,7 +77,7 @@ classdef ConvLayer < handle
       
       for s=1:batch_size
         this.pre_act_val(s,:,:,:) = reshape(...
-          im2row(squeeze(input_val(s,:,:,:)), this.kernel_dim, this.stride_size)...
+          im2row(shiftdim(input_val(s,:,:,:),1), this.kernel_dim, this.stride_size)...
           *this.kernel, this.layer_dim) ...
           + this.bias(ones(this.layer_dim(1),1), ones(this.layer_dim(2),1),:);
       end;
@@ -107,18 +107,19 @@ classdef ConvLayer < handle
       %     the cost function's gradient with respect to the input.
       batch_size = size(input_val, 1);
       grad_pre_act = layer_grad .* this.act_func_grad(this.pre_act_val);
-      grad_bias = grad_pre_act;
+      grad_bias = sum(sum(grad_pre_act, 2),3);
       grad_pre_act = reshape(grad_pre_act, ...
           [batch_size, prod(this.layer_dim(1:2)), this.layer_depth]);
       
       prev_layer_grad = zeros([batch_size, this.input_dim]);
       grad_kernel = zeros([batch_size, this.int_kernel_dim]);
       for s = 1:batch_size
-        aux_input = im2row(squeeze(input_val(s,:,:,:)), this.kernel_dim, this.stride_size);
+        aux_input = im2row(shiftdim(input_val(s,:,:,:),1), this.kernel_dim, this.stride_size);
         grad_kernel(s,:,:) =aux_input' ...
-            * squeeze(grad_pre_act(s,:,:)) + this.reg_coeff ...
+            * shiftdim(grad_pre_act(s,:,:),1) + this.reg_coeff ...
             * this.reg_func_grad(this.kernel); 
-        prev_layer_grad(s,:) = reshape(row2im(squeeze(grad_pre_act(s,:)) * this.kernel',...
+
+        prev_layer_grad(s,:,:,:) = reshape(row2im(shiftdim(grad_pre_act(s,:),1) * this.kernel',...
             this.kernel_dim, this.input_dim, this.stride_size), this.input_dim);
       end;
     end;
@@ -151,7 +152,7 @@ classdef ConvLayer < handle
       % Change the weights and biases by -learning_rate*grad
       % Inputs:
       %   leaning_rate: the step_size of the descent
-      this.kernel = this.weight - learning_rate * this.grad_kernel;
+      this.kernel = this.kernel - learning_rate * this.grad_kernel;
       this.bias = this.bias - learning_rate * this.grad_bias;
     end;
   end;

@@ -51,6 +51,17 @@ classdef Network < handle
         stride_size, act_func, act_func_grad, this.reg_func, ...
         this.reg_func_grad, this.reg_coeff, layer_name);
     end;
+    
+    function [output] = predict(this, input_val)
+        forward_val = input_val;
+      for l = 1:this.num_layers
+        this.layers_output{l} = compute_output(this.network_layers{l}, ...
+            forward_val);
+        forward_val = this.layers_output{l};
+      end;
+      
+      output = this.layers_output{this.num_layers};
+    end;
   
     function [output, cost] = fprop(this, input_val, label)
       % Evalutes the neural network at input_val using forward propagation
@@ -61,18 +72,9 @@ classdef Network < handle
       %     dim_3' consists of the corresponding label
       % Outputs:
       %   output: a matrix where each row corresponds to an output vector.
-     
-      forward_val = input_val;
-      for l = 1:this.num_layers
-        this.layers_output{l} = compute_output(this.network_layers{l}, ...
-            forward_val);
-        forward_val = this.layers_output{l};
-      end;
-      
-      output = this.layers_output{this.num_layers};
+      output = predict(this, input_val);
       
       cost = this.cost_func(output, label);
-      this.current_cost = cost;
      end;
      
     function [layers_grad_weight, layers_grad_bias] = bprop(this, ...
@@ -107,7 +109,7 @@ classdef Network < handle
       end;
      end;
      
-     function grad_descent(this, input_val, label, learning_rate)
+     function cost = grad_descent(this, input_val, label, learning_rate)
       % Perform one step of gradient desent the modify the weights and 
       % biases to do gradient descent once.
       % Inputs:
@@ -121,6 +123,7 @@ classdef Network < handle
       for l = 1:this.num_layers
         descent(this.network_layers{l}, learning_rate);
       end;
+      [~, cost] = fprop(this, input_val, label);
      end;
   
      function [weight, bias] = get_params(this)

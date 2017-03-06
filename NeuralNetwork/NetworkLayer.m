@@ -114,10 +114,7 @@ classdef NetworkLayer < handle
       grad_weight = mean(grad_weight, 1);
       grad_bias = mean(grad_bias, 1);
       
-      temp = size(grad_weight);
-      if ndims(grad_weight) > 1
-        grad_weight = reshape(grad_weight, [temp(2:end), 1]);
-      end;
+      grad_weight = shiftdim(grad_weight, 1);
 
       this.grad_weight = grad_weight;
       this.grad_bias = grad_bias;
