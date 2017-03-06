@@ -23,8 +23,8 @@ learning_rate = 0.1;
 
 %% Create a network object and add a layer to it
 network = Network(feature_dim, cost, cost_grad, reg, reg_grad, reg_coeff);
-add_layer(network, feature_dim, hidden_layer_dim, relu, relu_grad, 'hidden_layer');
-add_layer(network, hidden_layer_dim, output_dim, out, out_grad, 'output_layer_1');
+add_full_layer(network, feature_dim, hidden_layer_dim, relu, relu_grad, 'hidden_layer');
+add_full_layer(network, hidden_layer_dim, output_dim, out, out_grad, 'output_layer');
 
 %% Generate samples in R^2 with two classes (-1,-1) and (1, 1). We add an additive Gausian noise to it.
 X = repmat([-1,-1; 1, 1], [50,1]);

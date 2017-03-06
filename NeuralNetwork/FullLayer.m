@@ -1,4 +1,4 @@
-classdef NetworkLayer < handle  
+classdef FullLayer < handle  
   properties (GetAccess=public)
     input_dim;      % Dimension of the input tensor
     layer_dim;      % Dimension of the output tensor
@@ -27,7 +27,7 @@ classdef NetworkLayer < handle
   end;
   
   methods
-    function object = NetworkLayer(input_dim, layer_dim, ...
+    function object = FullLayer(input_dim, layer_dim, ...
             act_func, act_func_grad, reg_func, reg_func_grad, ...
             reg_coeff, layer_name)
       % Initialize the layer object
