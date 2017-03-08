@@ -117,9 +117,19 @@ ImShapeMap = ShapeMap(ImToTrain);
 axes(handles.shapeMapPhoto);
 imshow(ImShapeMap, []);
 
-%need storage for the maps against the given label
 endTime = now;
 timeForTrainRun = endTime - startTime;
+
+%if this label does not have a memory associated with it => create it
+if(or(IsEmpty(handles.data.objectIdentifierMemoryMap), not(isKey(handles.data.objectIdentifierMemoryMap, tLabel))))
+    trainMem = ObjectIdentifierMemoryMap(ImColorMap, ImShapeMap);
+else
+    %update the color and shape map to be a combo/corrected version
+    trainMem = handles.data.objectIdentifierMemoryMap(tLabel);
+end
+
+trainMem = trainMem.addIteration(timeForTrainRun);
+handles.data.objectIdentifierMemoryMap(tLabel) = trainMem;
 
 set(handles.statusText, 'String', 'Image Training Complete');
 
@@ -178,28 +188,61 @@ clearIdentifyResults(handles);
 %returns the painted image generated (right now is just returning the photo
 %I already have on file)
 testLabel = 'GANPhotoGenMatLab\GoogleImages\GoogleVDay.jpg';
+drawLabel = handles.data.drawingLabel;
+startV = ones(1,3); %placeholder for the starting vector
+score = ones(3,3); %placeholder for the score
 
-startTime = now;
+responseText = 'Image Generation Complete';
+%grab respective train map if it exists...
+if(or(IsEmpty(handles.data.objectIdentifierMemoryMap), ...
+    not(isKey(handles.data.objectIdentifierMemoryMap,drawLabel))))
+    responseText = 'Please train against label first before attempting to draw';
+else
+    respectiveTrainMem = handles.data.objectIdentifierMemoryMap(drawLabel);
+    trainColorMap = respectiveTrainMem.colorMap;
+    trainShapeMap = respectiveTrainMem.shapeMap;
+    
+    startTime = now;
+    ImToPaint = GenerateImage(testLabel);
 
-ImToPaint = GenerateImage(testLabel);
+    endTime = now;
+    timeForRun = endTime-startTime;
+    %loops over the number of iterations and runs object identifier against the
+    %generated image. keeps memory of previous generated image if new generated
+    %image has a lower score than previous.
 
-endTime = now;
-timeForRun = endTime-startTime;
-%loops over the number of iterations and runs object identifier against the
-%generated image. keeps memory of previous generated image if new generated
-%image has a lower score than previous.
+    %might want to change painter memory to store per iteration the respective
+    %score...
+    if(or(IsEmpty(handles.data.painterMemoryMap), ...
+            not(isKey(handles.data.painterMemoryMap, drawLabel))))
+    painterMem = PainterMemory(startV, score, timeForRun);
+    else
+    painterMem = handles.data.painterMemoryMap(drawLabel);
+    painterMem = updateBest(painterMem, startV, score);
+    painterMem = addIteration(painterMem,timeForRun);
+    end
 
-axes(handles.paintedImagePhoto);
-imshow(ImToPaint, []);
+    handles.data.painterMemoryMap(drawLabel) = painterMem;
 
-tempMatrix = ones(3,3);
-set(handles.paintedScore, 'Data', tempMatrix);
+    axes(handles.paintedImagePhoto);
+    imshow(ImToPaint, []);
 
-set(handles.totalGen, 'String', 0);
-set(handles.totalTrain, 'String', 0);
-set(handles.avgGenTime, 'String', 0);
-set(handles.avgTrainTime, 'String', 0);
-set(handles.statusText, 'String', 'Image Generation Complete');
+    set(handles.paintedScore, 'Data', painterMem.vectorScore);
+
+    numOfTrain = numOfIterations(respectiveTrainMem);
+    avgTrain = averageIterationTime(respectiveTrainMem);
+    numOfGen = numOfIterations(painterMem);
+    avgGen = averageIterationTime(painterMem);
+    
+    set(handles.totalGen, 'String', numOfGen);
+    set(handles.totalTrain, 'String', numOfTrain);
+    set(handles.avgGenTime, 'String', avgGen);
+    set(handles.avgTrainTime, 'String', avgTrain);
+end
+
+set(handles.statusText, 'String', responseText); 
+
+
 
 % --------------------------------------------------------------------
 function initialize_gui(fig_handle, handles, isreset)
@@ -217,6 +260,9 @@ handles.data.labelForTrainingImage = '';
 handles.data.drawingLabel = '';
 handles.data.imageToIdentify = '';
 handles.data.labelToIdentify = '';
+%initializing a new map for labels to memory objects
+handles.data.objectIdentifierMemoryMap = container.map;
+handles.data.painterMemoryMap = container.map;
 
 %holds the memories of the object identifier
 handles.data.objectIdentifierMemory = '';
