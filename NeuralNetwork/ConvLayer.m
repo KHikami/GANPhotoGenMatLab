@@ -31,6 +31,10 @@ classdef ConvLayer < handle
     layer_name;     % Name of the layer
   end;
   
+  properties (GetAccess=private)
+    transpose;
+  end;
+  
   properties (Constant) 
     init_var = 0.2;
   end;
@@ -38,15 +42,28 @@ classdef ConvLayer < handle
   methods
     function object = ConvLayer(input_dim, kernel_dim, layer_depth, ...
             stride_size, act_func, act_func_grad, reg_func, ...
-            reg_func_grad, reg_coeff, layer_name)
+            reg_func_grad, reg_coeff, layer_name, transpose)
       % Initialize the layer object
       object.input_dim = input_dim;
       object.kernel_dim = kernel_dim;
       object.layer_depth = layer_depth;
       object.stride_size = stride_size;
       
-      object.layer_dim = [ceil(input_dim(1)/stride_size(1)), ...
+      if ~exist('tranpose', 'var')
+        object.transpose = false;
+      else
+        object.transpose = (transpose == 'transpose');
+      end;
+      
+      if object.transpose
+        object.layer_dim = [1+(input_dim(1)-1)*(stride_size(1)+1), ...
+          1+(input_dim(2)-1)*(stride_size(2)+1), layer_depth];
+      else
+        object.layer_dim = [ceil(input_dim(1)/stride_size(1)), ...
           ceil(input_dim(2)/stride_size(2)), layer_depth];
+      end;
+      
+      
       object.int_kernel_dim = [prod([kernel_dim, input_dim(3)]), layer_depth];
       
       object.input_size = prod(input_dim);
@@ -62,6 +79,8 @@ classdef ConvLayer < handle
       object.kernel = normrnd(0, sqrt(object.init_var), ...
         object.int_kernel_dim);
       object.bias = normrnd(0, sqrt(object.init_var), [1, layer_depth]);
+      
+      
     end;
   
     function output_val = compute_output(this, input_val)
@@ -74,12 +93,21 @@ classdef ConvLayer < handle
       %     x layer_depth tensor storing the output
       batch_size = size(input_val, 1);
       this.pre_act_val = zeros([batch_size, this.layer_dim]);
-      
-      for s=1:batch_size
-        this.pre_act_val(s,:,:,:) = reshape(...
-          im2row(shiftdim(input_val(s,:,:,:),1), this.kernel_dim, this.stride_size)...
-          *this.kernel, this.layer_dim) ...
-          + this.bias(ones(this.layer_dim(1),1), ones(this.layer_dim(2),1),:);
+      if ~this.transpose
+        for s=1:batch_size
+          this.pre_act_val(s,:,:,:) = reshape(...
+            im2row(shiftdim(input_val(s,:,:,:),1), this.kernel_dim, this.stride_size)...
+            *this.kernel, this.layer_dim) ...
+            + this.bias(ones(this.layer_dim(1),1), ones(this.layer_dim(2),1),:);
+        end;
+      else
+        input_val = reshape(input_val, ...
+          [batch_size, prod(this.input_dim(1:2)), this.input_dim(3)]);     
+        for s = 1:batch_size
+          this.pre_act_val(s,:,:,:) = reshape(row2im(shiftdim(input_val(s,:),1) * this.kernel',...
+            this.kernel_dim, this.layer_dim, this.stride_size), this.layer_dim)...
+            + this.bias(ones(this.layer_dim(1),1), ones(this.layer_dim(2),1),:);
+        end;
       end;
       output_val = this.act_func(this.pre_act_val);
     end;
@@ -108,19 +136,27 @@ classdef ConvLayer < handle
       batch_size = size(input_val, 1);
       grad_pre_act = layer_grad .* this.act_func_grad(this.pre_act_val);
       grad_bias = sum(sum(grad_pre_act, 2),3);
-      grad_pre_act = reshape(grad_pre_act, ...
-          [batch_size, prod(this.layer_dim(1:2)), this.layer_depth]);
       
       prev_layer_grad = zeros([batch_size, this.input_dim]);
       grad_kernel = zeros([batch_size, this.int_kernel_dim]);
-      for s = 1:batch_size
-        aux_input = im2row(shiftdim(input_val(s,:,:,:),1), this.kernel_dim, this.stride_size);
-        grad_kernel(s,:,:) =aux_input' ...
-            * shiftdim(grad_pre_act(s,:,:),1) + this.reg_coeff ...
-            * this.reg_func_grad(this.kernel); 
+      
+      if ~this.transpose
+        grad_pre_act = reshape(grad_pre_act, ...
+        [batch_size, prod(this.layer_dim(1:2)), this.layer_depth]);
+        for s = 1:batch_size
+          aux_input = im2row(shiftdim(input_val(s,:,:,:),1), this.kernel_dim, this.stride_size);
+          grad_kernel(s,:,:) =aux_input' * shiftdim(grad_pre_act(s,:,:),1) ...
+              + this.reg_coeff * this.reg_func_grad(this.kernel); 
 
-        prev_layer_grad(s,:,:,:) = reshape(row2im(shiftdim(grad_pre_act(s,:),1) * this.kernel',...
-            this.kernel_dim, this.input_dim, this.stride_size), this.input_dim);
+          prev_layer_grad(s,:,:,:) = reshape(row2im(shiftdim(grad_pre_act(s,:),1) * this.kernel',...
+              this.kernel_dim, this.input_dim, this.stride_size), this.input_dim);
+        end;
+      else
+        for s=1:batch_size
+          prev_layer_grad(s,:,:,:) = reshape(...
+            im2row(shiftdim(grad_pre_act(s,:,:,:),1), this.kernel_dim, this.stride_size)...
+            *this.kernel, this.input_dim);
+        end;
       end;
     end;
     
@@ -146,6 +182,29 @@ classdef ConvLayer < handle
 
       this.grad_kernel = grad_kernel;
       this.grad_bias = grad_bias;
+    end;
+    
+    function [kernel, bias] = get_params(this)
+        % Return the weight and bias of this layer
+        kernel = this.kernel;
+        bias = this.bias;
+    end;
+    
+    function set_params(this, kernel, bias)
+        % Set the weight and bias
+        this.kernel = kernel;
+        this.bias = bias;
+    end;
+    
+    function [grad_kernel, grad_bias] = get_grad(this)
+        % Get the gradients w.r.t. to the parameters
+        grad_kernel = this.grad_kernel;
+        grad_bias = this.grad_bias;
+    end;
+    
+    function [int_kernel_dim, bias_dim] = get_params_dim(this)
+        int_kernel_dim = size(this.kernel);
+        bias_dim = size(this.bias);
     end;
     
     function descent(this, learning_rate)

@@ -120,6 +120,29 @@ classdef FullLayer < handle
       this.grad_bias = grad_bias;
     end;
     
+    function [weight, bias] = get_params(this)
+        % Return the weight and bias of this layer
+        weight = this.weight;
+        bias = this.bias;
+    end;
+    
+    function set_params(this, weight, bias)
+        % Set the weight and bias
+        this.weight = weight;
+        this.bias = bias;
+    end;
+    
+    function [grad_weight, grad_bias] = get_grad(this)
+        % Get the gradients w.r.t. to the parameters
+        grad_weight = this.grad_weight;
+        grad_bias = this.grad_bias;
+    end;
+    
+    function [weight_dim, bias_dim] = get_params_dim(this)
+        weight_dim = size(this.weight);
+        bias_dim = size(this.bias);
+    end;
+    
     function descent(this, learning_rate)
       % Change the weights and biases by -learning_rate*grad
       % Inputs:

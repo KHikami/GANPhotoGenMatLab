@@ -17,6 +17,10 @@ classdef Network < handle
     current_cost;   % Cost of current input.
   end;
   
+  properties (GetAccess=private)
+    reg_helper;
+  end;
+  
   methods
     function object = Network(feature_dim, cost_func, ...
             cost_func_grad, reg_func, reg_func_grad, reg_coeff)
@@ -31,9 +35,11 @@ classdef Network < handle
       
       object.network_layers = cell(0);
       object.num_layers = 0;
+      
+      object.reg_helper = @(w) sum(object.reg_func(w));
     end;
     
-    function add_full_layer(this, input_dim, layer_dim, act, ...
+    function add_fulllayer(this, input_dim, layer_dim, act, ...
             act_grad, layer_name)
       % Add a layer to the network. 
       this.num_layers = this.num_layers + 1;
@@ -72,9 +78,12 @@ classdef Network < handle
       %     dim_3' consists of the corresponding label
       % Outputs:
       %   output: a matrix where each row corresponds to an output vector.
+      %   cost: the regularized cost of the network with input_val and
+      %     label.
       output = predict(this, input_val);
       
-      cost = this.cost_func(output, label);
+      cost = this.cost_func(output, label) ...
+          + this.reg_coeff * sum(cellfun(this.reg_helper, get_params(this)));
      end;
      
     function [layers_grad_weight, layers_grad_bias] = bprop(this, ...
@@ -109,6 +118,53 @@ classdef Network < handle
       end;
      end;
      
+     function [cost, grad] = eval_at(this, input_val, label, weights, biases)
+       % Set the parameters of the network to weights and biases and
+       % compute the outs and costs using input_val and label
+       % Inputs:
+       %   input_val: a tensor of dimension batch_size x dim_1 x dim_2 x
+       %     dim_3 consists of the input data.
+       %   label: a tensor of dimension batch_size x dim_1' x dim_2' x
+       %     dim_3' consists of the corresponding label
+       %   weights: a num_layers x 1 cell containing the weights of each 
+       %     layer
+       %   biases: a num_layers x 1 cell sotring the biases of each layer
+       % Outputs:
+       %   output: a matrix where each row corresponds to an output vector.
+       %   cost: the regularized cost of the network with input_val and
+       %     label
+       if nargin==4
+           param_vector = weights;
+           weights = cell(this.num_layers,1);
+           biases = cell(this.num_layers,1);
+           idx = 1;
+           for l=1:this.num_layers
+             [weight_dim, bias_dim] = get_params_dim(this.network_layers{l});
+             length = prod(weight_dim);
+             weights{l} = reshape(param_vector(idx:idx+length-1), weight_dim);
+             idx = idx + length;
+             length = prod(bias_dim);
+             biases{l} = reshape(param_vector(idx:idx+length-1), bias_dim);
+             idx = idx + length;
+           end;
+       end;
+       
+       set_params(this, weights, biases);
+       [~, cost ] = fprop(this, input_val, label);         
+       [grad_weights, grad_biases] = bprop(this, input_val, label);
+       
+       grad = zeros(get_num_params(this),1);
+       idx = 1;
+       for l=1:this.num_layers
+         length = numel(grad_weights{l});
+         grad(idx:idx+length-1) = grad_weights{l}(:);
+         idx = idx + length;
+         length = numel(grad_biases{l});
+         grad(idx:idx+length-1) = grad_biases{l}(:);
+         idx = idx + length;
+       end;
+     end;
+     
      function cost = grad_descent(this, input_val, label, learning_rate)
       % Perform one step of gradient desent the modify the weights and 
       % biases to do gradient descent once.
@@ -131,16 +187,22 @@ classdef Network < handle
          weight = cell(this.num_layers, 1);
          bias = cell(this.num_layers, 1);
          for l =1:this.num_layers
-             weight{l} = this.network_layers{l}.layer_weight;
-             bias{l} = this.network_layers{l}.layer_bias;
+             [weight{l}, bias{l}] = get_params(this.network_layers{l});
+         end;
+     end;
+     
+     function num_params = get_num_params(this)
+         num_params = 0;
+         [weight, bias] = get_params(this);
+         for l=1:this.num_layers
+             num_params = num_params + numel(weight{l}) + numel(bias(l));
          end;
      end;
      
      function set_params(this, weight, bias)
          % Set the weights and bias of each layer
          for l =1:this.num_layers
-             this.network_layers{l}.layer_weight = weight{l};
-             this.network_layers{l}.layer_bias = bias{l};
+             set_params(this.network_layers{l}, weight{l}, bias{l})
          end;
      end;
      
@@ -150,8 +212,7 @@ classdef Network < handle
          grad_weight = cell(this.num_layers, 1);
          grad_bias = cell(this.num_layers, 1);
          for l =1:this.num_layers
-             grad_weight{l} = this.network_layers{l}.layer_grad_weight;
-             grad_bias{l} = this.network_layers{l}.layer_grad_bias;
+             [grad_weight{l}, grad_bias{l}] = get_grad(this.network_layers{l});
          end;
      end;
   end; 
