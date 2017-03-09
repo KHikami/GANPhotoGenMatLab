@@ -108,8 +108,11 @@ imshow(GrayScaleIm, []);
 %fill in the color map and shape map along with statistics for overall
 %process (Functions work on the small scale but won't work on the big
 %scale)
+
+%train first then display... if no previous map => direct display
+%otherwise train thend display latest color map and shape map
 ImColorMap = ColorMap(ImToTrain);
-PixelizedColorMap = Pixelize(ImColorMap);%returning 0 for some reason :/
+PixelizedColorMap = Pixelize(ImColorMap);
 axes(handles.colorMapPhoto);
 imshow(PixelizedColorMap/255);
 
