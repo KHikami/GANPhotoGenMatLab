@@ -24,7 +24,7 @@ function varargout = DeepLearningGUI(varargin)
 
 % Edit the above text to modify the response to help DeepLearningGUI
 
-% Last Modified by GUIDE v2.5 20-Feb-2017 11:03:28
+% Last Modified by GUIDE v2.5 09-Mar-2017 10:04:42
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -120,9 +120,11 @@ imshow(ImShapeMap, []);
 endTime = now;
 timeForTrainRun = endTime - startTime;
 
+numOfKeysInMap = length(handles.data.objectIdentifierMemoryMap);
+
 %if this label does not have a memory associated with it => create it
-if(or(IsEmpty(handles.data.objectIdentifierMemoryMap), not(isKey(handles.data.objectIdentifierMemoryMap, tLabel))))
-    trainMem = ObjectIdentifierMemoryMap(ImColorMap, ImShapeMap);
+if(or(numOfKeysInMap == 0, not(isKey(handles.data.objectIdentifierMemoryMap, tLabel))))
+    trainMem = ObjectIdentifierMemory(ImColorMap, ImShapeMap);
 else
     %update the color and shape map to be a combo/corrected version
     trainMem = handles.data.objectIdentifierMemoryMap(tLabel);
@@ -130,6 +132,8 @@ end
 
 trainMem = trainMem.addIteration(timeForTrainRun);
 handles.data.objectIdentifierMemoryMap(tLabel) = trainMem;
+
+testLength = length(handles.data.objectIdentifierMemoryMap);
 
 set(handles.statusText, 'String', 'Image Training Complete');
 
@@ -151,25 +155,23 @@ function clearDrawResults(handles)
 cla(handles.paintedImagePhoto);
 set(handles.paintedImagePhoto, 'Visible', 'off');
 axis off;
-
-cla(handles.statsGraph1);
-cla(handles.statsGraph2);
-cla(handles.statsGraph3);
-cla(handles.statsGraph4);
-
-cla(handles.paintedScore);
-set(handles.paintedScore, 'Visible', 'off');
-axis off;
-
+set(handles.avgDrawScore, 'String', '');
 set(handles.totalGen, 'String', '');
 set(handles.totalTrain, 'String', '');
 set(handles.avgGenTime, 'String', '');
 set(handles.avgTrainTime, 'String', '');
+set(handles.drawScoreButton, 'Enable', 'off');
+set(handles.drawScoreButton, 'Visible', 'off');
+set(handles.statsButton, 'Enable', 'off');
+set(handles.statsButton, 'Visible', 'off');
 
 function clearIdentifyResults(handles)
 set(handles.labelOfObjectBeingIdentified, 'String', '');
 cla(handles.identifiedObjectPhoto);
+set(handles.avgIdentifyScore, 'String', '');
 set(handles.identifiedObjectPhoto, 'Visible', 'off');
+set(handles.identifyScoreButton, 'Enable', 'off');
+set(handles.identifyScoreButton, 'Visible', 'off');
 axis off;
 
 % --- Executes on button press in draw.
@@ -177,10 +179,6 @@ function draw_Callback(hObject, eventdata, handles)
 % hObject    handle to draw (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-%re-activate or clear all the axes we don't want to use
-set(handles.paintedImagePhoto, 'Visible', 'on');
-set(handles.paintedScore, 'Visible', 'on');
 
 clearTrainResults(handles);
 clearIdentifyResults(handles);
@@ -191,13 +189,22 @@ testLabel = 'GANPhotoGenMatLab\GoogleImages\GoogleVDay.jpg';
 drawLabel = handles.data.drawingLabel;
 startV = ones(1,3); %placeholder for the starting vector
 score = ones(3,3); %placeholder for the score
-
 responseText = 'Image Generation Complete';
+
 %grab respective train map if it exists...
-if(or(IsEmpty(handles.data.objectIdentifierMemoryMap), ...
+numOfTrainEntries = length(handles.data.objectIdentifierMemoryMap);
+
+if(or(numOfTrainEntries == 0, ...
     not(isKey(handles.data.objectIdentifierMemoryMap,drawLabel))))
     responseText = 'Please train against label first before attempting to draw';
 else
+    %re-activate or clear all the axes we don't want to use
+    set(handles.paintedImagePhoto, 'Visible', 'on');
+    set(handles.drawScoreButton, 'Enable', 'on');
+    set(handles.drawScoreButton, 'Visible', 'on');
+    set(handles.statsButton, 'Enable', 'on');
+    set(handles.statsButton, 'Visible', 'on');
+    
     respectiveTrainMem = handles.data.objectIdentifierMemoryMap(drawLabel);
     trainColorMap = respectiveTrainMem.colorMap;
     trainShapeMap = respectiveTrainMem.shapeMap;
@@ -213,31 +220,35 @@ else
 
     %might want to change painter memory to store per iteration the respective
     %score...
-    if(or(IsEmpty(handles.data.painterMemoryMap), ...
+    numOfPainterEntries = length(handles.data.painterMemoryMap);
+    if(or(numOfPainterEntries == 0, ...
             not(isKey(handles.data.painterMemoryMap, drawLabel))))
-    painterMem = PainterMemory(startV, score, timeForRun);
+        painterMem = PainterMemory(startV, score, timeForRun);
     else
-    painterMem = handles.data.painterMemoryMap(drawLabel);
-    painterMem = updateBest(painterMem, startV, score);
-    painterMem = addIteration(painterMem,timeForRun);
+        painterMem = handles.data.painterMemoryMap(drawLabel);
+        painterMem = updateBest(painterMem, startV, score);
+        painterMem = addIteration(painterMem,timeForRun, score);
     end
 
     handles.data.painterMemoryMap(drawLabel) = painterMem;
 
     axes(handles.paintedImagePhoto);
     imshow(ImToPaint, []);
-
-    set(handles.paintedScore, 'Data', painterMem.vectorScore);
+    
+    handles.data.paintedScore = painterMem.vectorScore;
 
     numOfTrain = numOfIterations(respectiveTrainMem);
     avgTrain = averageIterationTime(respectiveTrainMem);
     numOfGen = numOfIterations(painterMem);
     avgGen = averageIterationTime(painterMem);
+    avgScore = averageScore(painterMem);
     
     set(handles.totalGen, 'String', numOfGen);
     set(handles.totalTrain, 'String', numOfTrain);
     set(handles.avgGenTime, 'String', avgGen);
     set(handles.avgTrainTime, 'String', avgTrain);
+    set(handles.avgDrawScore, 'String', avgScore);
+    handles.data.currentDrawMemory = painterMem;
 end
 
 set(handles.statusText, 'String', responseText); 
@@ -261,8 +272,11 @@ handles.data.drawingLabel = '';
 handles.data.imageToIdentify = '';
 handles.data.labelToIdentify = '';
 %initializing a new map for labels to memory objects
-handles.data.objectIdentifierMemoryMap = container.map;
-handles.data.painterMemoryMap = container.map;
+handles.data.objectIdentifierMemoryMap = containers.Map();
+handles.data.painterMemoryMap = containers.Map();
+handles.data.paintedScore = [];
+handles.data.identifiedScore = [];
+handles.data.currentDrawMemory = '';
 
 %holds the memories of the object identifier
 handles.data.objectIdentifierMemory = '';
@@ -278,11 +292,7 @@ disableIdentifyFields(handles);
 
 set(handles.identifiedObjectPhoto, 'visible', 'off');
 axis off;
-set(handles.identifyScoreMatrix, 'visible', 'off');
-axis off;
 set(handles.paintedImagePhoto, 'visible', 'off');
-axis off;
-set(handles.paintedScore, 'visible', 'off');
 axis off;
 set(handles.colorMapPhoto, 'visible', 'off');
 axis off;
@@ -290,8 +300,12 @@ set(handles.shapeMapPhoto, 'visible', 'off');
 axis off;
 set(handles.grayScalePhoto, 'visible', 'off');
 axis off;
-
-
+set(handles.drawScoreButton, 'Enable', 'off');
+set(handles.drawScoreButton, 'Visible', 'off');
+set(handles.statsButton, 'Enable', 'off');
+set(handles.statsButton, 'Visible', 'off');
+set(handles.identifyScoreButton, 'Enable', 'off');
+set(handles.identifyScoreButton, 'Visible', 'off');
 % Update handles structure
 guidata(handles.figure1, handles);
 
@@ -335,7 +349,9 @@ set(handles.identifyImage, 'String', emptyString);
 
 function disableDrawingFields(handles)
 set(handles.labelForImageToDraw, 'Enable', 'off');
+set(handles.labelForImageToDraw, 'String', '');
 set(handles.numOfIterations, 'Enable', 'off');
+set(handles.numOfIterations, 'String', '');
 set(handles.draw, 'Enable', 'off');
 
 function enableDrawingFields(handles)
@@ -369,7 +385,8 @@ function labelForImageToDraw_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-%should do nothing or reset the text
+handles.data.drawingLabel = get(hObject,'String');
+guidata(hObject,handles);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -543,19 +560,25 @@ label = handles.data.labelToIdentify;
 %set status text to be no related template in memory. please train first.
 returnText = 'Object Identified';
 
-set(handles.identifiedObjectPhoto, 'Visible', 'on');
-
 clearTrainResults(handles);
 clearDrawResults(handles);
 
-ImToIdentify = imread(image);
-axes(handles.identifiedObjectPhoto);
-imshow(ImToIdentify, []);
+numOfTrainEntries = length(handles.data.objectIdentifierMemoryMap);
+if(or(numOfTrainEntries == 0, not(isKey(handles.data.objectIdentifierMemoryMap, label))))
+    returnText = 'Please first train Object Identifier against label';
+else
+    set(handles.identifiedObjectPhoto, 'Visible', 'on');
+    ImToIdentify = imread(image);
+    axes(handles.identifiedObjectPhoto);
+    imshow(ImToIdentify, []);
+end
+
 
 %uses objectIdentifier against passed in image and identify hit with score
 
 set(handles.labelOfObjectBeingIdentified, 'String', label);
 set(handles.statusText, 'String', returnText);
+set(handles.avgIdentifyScore, 'String', 3);
 
 function identifyLabel_Callback(hObject, eventdata, handles)
 % hObject    handle to identifyLabel (see GCBO)
@@ -577,3 +600,45 @@ function identifyLabel_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on button press in identifyScoreButton.
+function identifyScoreButton_Callback(hObject, eventdata, handles)
+% hObject    handle to identifyScoreButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+identifyScore = handles.data.identifiedScore;
+pos_size = get(handles.figure1, 'Position');
+displayScore('Title', 'Identified Object Score', 'Score', identifyScore);
+
+
+
+
+% --- Executes on button press in drawScoreButton.
+function drawScoreButton_Callback(hObject, eventdata, handles)
+% hObject    handle to drawScoreButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+dataScore = handles.data.paintedScore;
+pos_size = get(handles.figure1, 'Position');
+displayScore('Title', 'Painting Score', 'Score', dataScore);
+
+
+%having trouble plotting stuff... please do not use for now
+% --- Executes on button press in statsButton.
+function statsButton_Callback(hObject, eventdata, handles)
+% hObject    handle to statsButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+%can't be empty here
+drawingMemory = handles.data.currentDrawMemory;
+stats1 = ones(2,5);
+stats2 = ones(2,3);
+stats3 = ones(2,6);
+stats4 = ones(2,8);
+pos_size = get(handles.figure1, 'Position'); 
+statsDialog('Title', 'Painting Statistics', ...
+    'statsGraph1', stats1, 'statsGraph2', stats2, 'statsGraph3', stats3, ...
+    'statsGraph4', stats4);

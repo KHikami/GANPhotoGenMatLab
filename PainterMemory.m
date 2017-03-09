@@ -9,12 +9,14 @@ classdef PainterMemory %this should be a value class....
         function obj = PainterMemory(vector, score, time)
             obj.startingVector = vector;
             obj.vectorScore = score;
-            obj.iterationArray = [1 time];
+            avgScore = averageScore(obj);
+            obj.iterationArray = [1 time avgScore];
         end
 
         function obj = addIteration(mem, time)
             iterationNum = numOfIterations(mem) + 1;
-            newRow = [iterationNum time];
+            avgScore = averageScore(mem);
+            newRow = [iterationNum time avgScore];
             mem.iterationArray = [mem.iterationArray; newRow];
             obj = mem;
         end
@@ -23,6 +25,12 @@ classdef PainterMemory %this should be a value class....
             mem.startingVector = v;
             mem.vectorScore = score;
             obj = mem;
+        end
+        
+        function num = averageScore(mem)
+           [sh, sw] = size(mem.vectorScore);
+           totalScore = sum(reshape(mem.vectorScore, 1,sh*sw));
+           num = totalScore/(sh*sw);
         end
         
         function num = numOfIterations(mem)
@@ -36,8 +44,16 @@ classdef PainterMemory %this should be a value class....
             num = totalTime/numOfIt;
         end
         
-        function array = iterationPlot(mem)
-            array = mem.iterationArray;
+        function array = iterationTimePlot(mem)
+            it = mem.iterationArray(:,1);
+            times = mem.iterationArray(:,2);
+            array = [it times];
+        end
+        
+        function array = iterationScorePlot(mem)
+            it = mem.iterationArray(:,1);
+            scores = mem.iterationArray(:,3);
+            array = [it scores];
         end
         
     end

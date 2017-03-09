@@ -30,7 +30,7 @@ classdef ObjectIdentifierMemory %this should be a value class....
         end
         
         function num = numOfIterations(mem)
-            [L,W] = size(mem.iterationArray);
+            [L,W] =size(mem.iterationArray);
             num = L;
         end
         
