@@ -4,8 +4,8 @@ clc;
 close all;
 
 %% Variables for our test script
-cost = @(pred, label) -mean(label.*log(pred) + (1-label).*log(1-pred));
-cost_grad = @(pred, label) - label./pred + (1-label)./(1-pred);
+cost = @(pred, label) norm(pred - label, 'fro')^2;
+cost_grad = @(pred, label) 2*;
 reg = @(w) w.^2;
 reg_grad = @(w) 2*w;
 reg_coeff = 0.001;
@@ -27,36 +27,27 @@ network = Network(im_dim, cost, cost_grad, reg, reg_grad, reg_coeff);
 add_convlayer(network, im_dim, kernel_dim, convlayer_depth, ...
         stride_size, relu, relu_grad, 'conv_layer');
 convlayer_dim = network.network_layers{1}.layer_dim;
-add_convlayer(network, convlayer_dim, kernel_dim, convlayer_depth, ...
-        stride_size, relu, relu_grad, 'conv_layer_2');
-convlayer_dim = network.network_layers{2}.layer_dim;
-add_fulllayer(network, convlayer_dim, 1, out, out_grad, 'output_full');
+add_transconvlayer(network, convlayer_dim, kernel_dim, convlayer_depth, ...
+        stride_size, relu, relu_grad, 'transconv_layer');
+%convlayer_dim = network.network_layers{2}.layer_dim;
+%add_fulllayer(network, convlayer_dim, 1, out, out_grad, 'output_full');
 
-%% Generate a bunch of 32x32 images of circles and squares. Circles are 1's
-% and squares are 0's
+%% Generate a bunch of 33x33 images of squares.
 
 num_circles = 100;
-num_squares = 100;
-X = zeros([num_circles+num_squares, im_dim]);
-y = zeros(num_circles+num_squares,1);
-y(1:num_circles) = 1;
+X = zeros([num_circles, im_dim]);
 
 for i=1:num_circles
     X(i,:,:) = gen_circle(randi([5,10]), randi([11,22]), randi([11,22]), im_length);
 end;
-
-for j=num_circles+1:num_squares+num_circles
-    X(j,:,:) = gen_square(randi([5,10]), randi([11,22]), randi([11,22]), im_length);
-end;
+y=X;
 
 %% Run gradient descent and check our result
 num_ite = 100;
-costs = zeros(num_ite,1);
 eval_aux = @(w) eval_at(network, X, y, w);
 num_params = get_num_params(network);
 x_0 = normrnd(0,0.2,[num_params, 1]);
-options = optimoptions('fminunc', 'Algorithm', 'quasi-newton', ...
-    'SpecifyObjectiveGradient',true, 'Display','iter', 'MaxFunEvals',50);
+options = optimoptions('fminunc', 'Algorithm', 'quasi-newton', 'SpecifyObjectiveGradient',true, 'Display','iter', 'MaxFunEvals',100);
 fminunc(eval_aux, x_0, options);
 
 pred_label = predict(network, X);
@@ -81,7 +72,7 @@ pred_label = predict(network, X);
 % 
 % %algo_grad_bias{1}(1)
 % difference = algo_grad_weight{1}(idx) - grad_aprox
-% end;
-% 
+%end;
+
 
 

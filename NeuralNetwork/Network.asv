@@ -92,9 +92,9 @@ classdef Network < handle
       
       output_dim = size(output);
       costs = zeros(output_dim(1),1);
-      cost_fun = this.cost_func;
-      parfor s=1:size(output,1)
-        costs(s) =  cost_fun(shiftdim(output(s,:,:,:),1),shiftdim(label(s,:,:,:),1));
+      parfor s=1:size(i,1)
+        costs(s) =  this.cost_func(reshape(output(s,:), output_dim(2:end)),...
+            reshape(label(s,:), output_dim(2:end)));
       end;
       cost = mean(costs) ...
           + this.reg_coeff * sum(cellfun(this.reg_helper, get_params(this)));
@@ -122,8 +122,7 @@ classdef Network < handle
       back_grad = zeros(output_dim);
       cost_grad = this.cost_func_grad;
       parfor s=1:output_dim(1)
-        back_grad(s,:,:,:) = cost_grad(shiftdim(output_val(s,:,:,:),1), ...
-            shiftdim(label(s,:,:,:),1));
+        back_grad(s) = cost_grad(output_val(s,:,:,:), label(s,:,:,:));
       end;
       
       for l = this.num_layers:-1:1

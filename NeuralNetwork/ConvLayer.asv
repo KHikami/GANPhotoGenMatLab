@@ -49,18 +49,18 @@ classdef ConvLayer < handle
       object.layer_depth = layer_depth;
       object.stride_size = stride_size;
       
-      if ~exist('transpose', 'var')
+      if ~exist('tranpose', 'var')
         object.transpose = false;
       else
         object.transpose = (transpose == 'transpose');
       end;
       
       if object.transpose
-        object.layer_dim = [1+(input_dim(1)-1)*stride_size(1), ...
-          1+(input_dim(2)-1)*stride_size(2), layer_depth];
+        object.layer_dim = [1+(input_dim(1)-1)*(stride_size(1)+1), ...
+          1+(input_dim(2)-1)*(stride_size(2)+1), layer_depth];
       else
-        object.layer_dim = [1+floor((input_dim(1)-1)/stride_size(1)), ...
-          1+floor((input_dim(2)-1)/stride_size(2)), layer_depth];
+        object.layer_dim = [ceil(input_dim(1)/stride_size(1)), ...
+          ceil(input_dim(2)/stride_size(2)), layer_depth];
       end;
       
       
@@ -104,8 +104,8 @@ classdef ConvLayer < handle
         input_val = reshape(input_val, ...
           [batch_size, prod(this.input_dim(1:2)), this.input_dim(3)]);     
         for s = 1:batch_size
-          this.pre_act_val(s,:,:,:) = row2im(shiftdim(input_val(s,:),1) * this.kernel',...
-            this.kernel_dim, this.layer_dim, this.stride_size)...
+          this.pre_act_val(s,:,:,:) = reshape(row2im(shiftdim(input_val(s,:),1) * this.kernel',...
+            this.kernel_dim, this.layer_dim, this.stride_size), this.layer_dim)...
             + this.bias(ones(this.layer_dim(1),1), ones(this.layer_dim(2),1),:);
         end;
       end;
@@ -143,29 +143,19 @@ classdef ConvLayer < handle
       if ~this.transpose
         grad_pre_act = reshape(grad_pre_act, ...
         [batch_size, prod(this.layer_dim(1:2)), this.layer_depth]);
-        % variables to help with parallelization
-        k_dim = this.kernel_dim;
-        s_size = this.stride_size;
-        r_coeff = this.reg_coeff;
-        r_func = this.reg_func_grad;
-        k = this.kernel;
-        in_dim = this.input_dim;
-        
-        parfor s = 1:batch_size
-          aux_input = im2row(shiftdim(input_val(s,:,:,:),1), k_dim, s_size);
+        for s = 1:batch_size
+          aux_input = im2row(shiftdim(input_val(s,:,:,:),1), this.kernel_dim, this.stride_size);
           grad_kernel(s,:,:) =aux_input' * shiftdim(grad_pre_act(s,:,:),1) ...
-              + r_coeff * r_func(k); 
+              + this.reg_coeff * this.reg_func_grad(this.kernel); 
 
-          prev_layer_grad(s,:,:,:) = row2im(shiftdim(grad_pre_act(s,:),1) * k',...
-              k_dim, in_dim, s_size);
+          prev_layer_grad(s,:,:,:) = reshape(row2im(shiftdim(grad_pre_act(s,:),1) * this.kernel',...
+              this.kernel_dim, this.input_dim, this.stride_size), this.input_dim);
         end;
       else
         for s=1:batch_size
-          aux_input = im2row(shiftdim(grad_pre_act(s,:,:,:),1), this.kernel_dim, this.stride_size );
-          grad_kernel(s, :, :) = aux_input' * reshape(input_val(s,:,:,:), ...
-              prod(this.input_dim(1:2)), this.input_dim(3)) ...
-              + this.reg_coeff * this.reg_func_grad(this.kernel);   
-          
+          aux_input = im2row(shiftdim(layer_grad(s,:,:,:),1), this.kernem_dim, this.stride_size );
+          grad_kernel(s, :, :) = aux_input' * reshape(
+            
           prev_layer_grad(s,:,:,:) = reshape(...
             im2row(shiftdim(grad_pre_act(s,:,:,:),1), this.kernel_dim, this.stride_size)...
             *this.kernel, this.input_dim);
