@@ -2,8 +2,6 @@ classdef ObjectIdentifierMemory %this should be a value class....
     properties
         colorMap;
         shapeMap;
-        colorWeight = 0.5;
-        shapeWeight = 0.5;
         iterationArray;
     end
     
@@ -12,13 +10,6 @@ classdef ObjectIdentifierMemory %this should be a value class....
             obj.colorMap = color;
             obj.shapeMap = shape;
             obj.iterationArray = [];
-        end
-        
-        function [newCWeight, newSWeight] = updateWeights(mem, c,s)
-            mem.colorWeight = c;
-            mem.shapeWeight = s;
-            newCWeight = mem.colorWeight;
-            newSWeight = mem.shapeWeight;
         end
         
         function obj = addIteration(mem, time)
@@ -30,7 +21,7 @@ classdef ObjectIdentifierMemory %this should be a value class....
         end
         
         function num = numOfIterations(mem)
-            [L,W] =size(mem.iterationArray);
+            [L,~] =size(mem.iterationArray);
             num = L;
         end
         

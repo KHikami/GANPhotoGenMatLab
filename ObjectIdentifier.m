@@ -1,29 +1,81 @@
-function [score, resultImage] = ObjectIdentifier(image, colorMap, shapeMap, colorWeight, shapeWeight)
+function [score, resultbox, hasObject] = ObjectIdentifier(image, colorMap, shapeMap)
 
 %hopefully house the colorMap and shapeMap but if a function stores it =>
 %data structure destroyed upon function call complete... need to add into
 %DeepLearningGUI somewhere to store a map from label to the colorMap and
 %shapeMap and use this to locate the object of our desire and add a box
 %around it with a given score.
-
-[h,w,dim] = size(image);
+h = size(image,1);
+w = size(image,2);
 [ch, cw, cd] = size(colorMap);
-[sh, sw, sd] = size(shapeMap);
+hasObject = 1;
+
 
 inputColorMap = ColorMap(image);
-colorScore = zeros(h,w);
+colorScore = zeros(size(inputColorMap,1),size(inputColorMap,2));
+%score image against colormap (stored colormap is the color weight)
+
+%multiplying the input colormap against the orig color map... imfilter is
+%somehow giving me really big numbers...
+%doesn't work upon different image! need to figure the filter issue...
+%apparently filter values have to add up to 0???
 for i= 1:cd
-    colorScore = colorScore + imfilter(inputColorMap(:,:,i),colorMap(:,:,i), 'replicate');
+    colorScore = colorScore + imfilter(inputColorMap(:,:,i),colorMap(:,:,i), 'conv');
+    %imfilter has a conv feature as well but this one is weird in which it
+    %keeps giving me positive numbers
+    %colorScore = colorScore + inputColorMap(:,:,i) .* colorMap (:,:,i);
 end
 
-%first score the image against the shape map
+%probably not the best normalization... considering that you will have a
+%value of 1... want to do a dot multiply between inputColorMap and colormap
+%despite differing shapes...
+colColorScore = reshape(colorScore, 1, size(inputColorMap,1)*size(inputColorMap,2));
+colorScore = colorScore/max(colColorScore); %have to normalize it
 
-%then score against the color map
-hit = colorWeight*colorScore;
-
-%sum the scores together to evaluate is hit found
+%score the output of colorScore/pixelize(ColorMap()) against the shape map
 
 %return image with the hit boxed... only 1 hit per image for now...
 
-score = zeros(h,w);
-resultImage = image;
+threshold = 0.5;%to be tweaked as we go along... currently too low from results...
+score = colorScore;  %should get the result after shape Score calculated
+%right now setting it to colorScore
+
+[val, ind] = sort(colorScore(:), 'descend');
+
+%we only want the topmost hit.
+%check if top hit is above threshold
+%if is => map to pixel coordinates & draw box in image
+%  return image with box
+%score will be the sub matrix of score for the boxed section
+
+topIndex = ind(1);
+if(val(1) >= threshold)
+    position = (1:(size(score,1))*(size(score,2)));
+    position = reshape(position, size(score,1), size(score,2));
+    [yblock, xblock] = find(position == topIndex);
+    assert(val(1)==score(yblock,xblock));
+
+    %since we scaled by 8 for our blocks => undoing the scale
+    ypixel = yblock*8;
+    xpixel = xblock*8;
+
+    %draw rectangle around identified object (not too sure how to stuff
+    %this into the image)
+    %want the box to be around the size of our template
+    %suggested is to save it into an image and display it later but :/
+    
+    %storing the box coordinates (should be where the object is in the
+    %image but currently having the problem with imfilter)(gets cropped off
+    %in axes mode...) Not much point to this right now since the compressed image
+    %is stored in colormap...
+    boxwidth = max([cw*8-3 w-3]);
+    boxheight = max([ch*8-3 h-3]);
+    box = [xpixel ypixel boxwidth boxheight];
+    
+else
+    %value not high enough for detection => return fail...
+    hasObject = 0;
+end
+
+resultbox = box;
+

@@ -109,15 +109,22 @@ if(isNewTrain)
     colorMapToShow = ColorMap(ImToTrain);
     shapeMapToShow = ShapeMap(ImToTrain);
 else
-    %should be the newly trained stuff...
+    %run identifier against new image to train against
     origData = handles.data.objectIdentifierMemoryMap(tLabel);
+    [newDataScore, ~, inClass] = ObjectIdentifier(ImToTrain, ...
+        origData.colorMap, origData.shapeMap);
+    %do nothing with the identify image and possibly nothing with
+    %inClass/hit
     
-    %identifyObject in new image & calculate score
-    %calculate features of the new image for label
-    colorMapToShow = ColorMap(ImToTrain);
-    shapeMapToShow = ShapeMap(ImToTrain);
+    if(inClass)
+        %I can positively identify => do we want to skip?
+    end
     
-    %backpropagate the error
+    %modify colormap and shape map to new stuff (backpropagate the error)
+    [newColorMap, newShapeMap] = TrainIdentifier(origData.colorMap, origData.shapeMap,...
+        ImToTrain, newDataScore);
+    colorMapToShow = newColorMap;
+    shapeMapToShow = newShapeMap;
 end
 
 
@@ -141,9 +148,10 @@ if(isNewTrain)
 else
     %update the color and shape map to be a combo/corrected version
     trainMem = handles.data.objectIdentifierMemoryMap(tLabel);
+    trainMem = setMaps(trainMem, colorMapToShow, shapeMapToShow);
 end
 
-trainMem = trainMem.addIteration(timeForTrainRun);
+trainMem = addIteration(trainMem,timeForTrainRun);
 handles.data.objectIdentifierMemoryMap(tLabel) = trainMem;
 
 set(handles.statusText, 'String', 'Image Training Complete');
@@ -200,7 +208,6 @@ clearIdentifyResults(handles);
 testLabel = 'GANPhotoGenMatLab\GoogleImages\GoogleVDay.jpg';
 drawLabel = handles.data.drawingLabel;
 startV = ones(1,3); %placeholder for the starting vector
-score = ones(3,3); %placeholder for the score
 responseText = 'Image Generation Complete';
 
 %grab respective train map if it exists...
@@ -227,7 +234,9 @@ else
         
         startTime = now;
         ImToPaint = GenerateImage(testLabel);
-        %objectIdentifier run against ImToPaint
+        %objectIdentifier run against ImToPaint (not too sure if we want to
+        %use inClass for anything
+        [drawScore, ~, inClass] = ObjectIdentifier(ImToPaint, trainColorMap, trainShapeMap);
         endTime = now;
         timeForRun = endTime-startTime;
         %keeps memory of previous generated image if new generated
@@ -235,10 +244,10 @@ else
         numOfPainterEntries = length(handles.data.painterMemoryMap);
         if(or(numOfPainterEntries == 0, ...
             not(isKey(handles.data.painterMemoryMap, drawLabel))))
-            painterMem = PainterMemory(startV, score, timeForRun);
+            painterMem = PainterMemory(startV, drawScore, timeForRun);
         else
             painterMem = handles.data.painterMemoryMap(drawLabel);
-            painterMem = updateBest(painterMem, startV, score);
+            painterMem = updateBest(painterMem, startV, drawScore);
             painterMem = addIteration(painterMem,timeForRun);
         end
 
@@ -582,20 +591,44 @@ numOfTrainEntries = length(handles.data.objectIdentifierMemoryMap);
 if(or(numOfTrainEntries == 0, not(isKey(handles.data.objectIdentifierMemoryMap, label))))
     returnText = 'Please first train Object Identifier against label';
 else
+    %uses objectIdentifier against passed in image and identify hit with score
     set(handles.identifiedObjectPhoto, 'Visible', 'on');
     set(handles.identifyScoreButton,'Visible','on');
     set(handles.identifyScoreButton, 'Enable','on');
     ImToIdentify = imread(image);
-    axes(handles.identifiedObjectPhoto);
-    imshow(ImToIdentify, []);
+    
+    trainData = handles.data.objectIdentifierMemoryMap(label);
+    [identifyScore, identifyBox, inClass] = ObjectIdentifier(ImToIdentify, trainData.colorMap,...
+        trainData.shapeMap);
+    
+    handles.data.identifiedScore = identifyScore;
+    
+    if(inClass == 0)
+        returnText = 'Target Object not identified';
+        axes(handles.identifiedObjectPhoto);
+        imshow(ImToIdentify, []);
+    else
+        axes(handles.identifiedObjectPhoto);
+        imshow(ImToIdentify, []);
+        
+        hold on;
+        h = rectangle('Position', identifyBox, 'EdgeColor', [1 0 0], ...
+        'LineWidth', 3);
+        hold off;
+    end
+    
+    [sh, sw] = size(identifyScore);
+    totalScore = sum(reshape(identifyScore, 1,sh*sw));
+    avgScore = totalScore/(sh*sw);
+    set(handles.avgIdentifyScore, 'String', avgScore);
+    set(handles.labelOfObjectBeingIdentified, 'String', label);
+    
 end
 
-
-%uses objectIdentifier against passed in image and identify hit with score
-
-set(handles.labelOfObjectBeingIdentified, 'String', label);
 set(handles.statusText, 'String', returnText);
-set(handles.avgIdentifyScore, 'String', 3);
+
+%need to store the identify score for the score button to use
+guidata(hObject, handles);
 
 function identifyLabel_Callback(hObject, eventdata, handles)
 % hObject    handle to identifyLabel (see GCBO)
@@ -651,9 +684,10 @@ function statsButton_Callback(hObject, eventdata, handles)
 
 %can't be empty here
 drawingMemory = handles.data.currentDrawMemory;
-stats1 = reshape([1 2 3 4 5 6],2,3);
-stats2 = ones(2,3);
-stats3 = ones(2,6);
+stats1 = drawingMemory.iterationTimePlot;
+stats2 = drawingMemory.iterationScorePlot;
+trainMemory = handles.data.objectIdentifierMemoryMap(handles.data.drawingLabel);
+stats3 = trainMemory.iterationPlot;
 stats4 = ones(2,8);
 pos_size = get(handles.figure1, 'Position'); 
 statsDialog('Title', 'Painting Statistics', ...
