@@ -61,6 +61,7 @@ guidata(hObject, handles);
 % Hint: when choosing keywords, be sure they are not easily confused 
 % with existing figure properties.  See the output of set(figure) for
 % a list of figure properties.
+
 if(nargin > 3)
     for index = 1:2:(nargin-3),
         if nargin-3==index, break, end
@@ -68,17 +69,13 @@ if(nargin > 3)
             case 'title'
                 set(hObject, 'Name', varargin{index+1});
             case 'statsgraph1'
-                inputData = varargin{index+1}; %need to figure out how to use plot..
-                plot(inputData(:,1),inputData(:,2),handles.statsGraph1);
+                handles.data.stats1Data = varargin{index+1};
             case 'statsgraph2'
-                inputData = varargin{index+1};
-                plot(inputData(:,1),inputData(:,2),handles.statsGraph2);
+                handles.data.stats2Data = varargin{index+1};
             case 'statsgraph3'
-                inputData = varargin{index+1};
-                plot(inputData(:,1),inputData(:,2),handles.statsGraph3);
+                handles.data.stats3Data = varargin{index+1};
             case 'statsgraph4'
-                inputData = varargin{index+1};
-                plot(inputData(:,1),inputData(:,2),handles.statsGraph4);
+                handles.data.stats4Data = varargin{index+1};
         end
     end
 end
@@ -113,6 +110,28 @@ set(hObject, 'Units', OldUnits);
 
 % Make the GUI modal
 set(handles.figure1,'WindowStyle','modal')
+
+%we can get so fancy with our graphs:
+%https://www.mathworks.com/help/matlab/ref/scatter.html
+stats1xval = handles.data.stats1Data(:,1);
+stats1yval = handles.data.stats1Data(:,2);
+axes(handles.statsGraph1);
+scatter(stats1xval,stats1yval,'filled');
+
+stats2xval = handles.data.stats2Data(:,1);
+stats2yval = handles.data.stats2Data(:,2);
+axes(handles.statsGraph2);
+scatter(stats2xval,stats2yval);
+
+stats3xval = handles.data.stats3Data(:,1);
+stats3yval = handles.data.stats3Data(:,2);
+axes(handles.statsGraph3);
+scatter(stats3xval,stats3yval);
+
+stats4xval = handles.data.stats4Data(:,1);
+stats4yval = handles.data.stats4Data(:,2);
+axes(handles.statsGraph4);
+scatter(stats4xval,stats4yval);
 
 % UIWAIT makes statsDialog wait for user response (see UIRESUME)
 uiwait(handles.figure1);

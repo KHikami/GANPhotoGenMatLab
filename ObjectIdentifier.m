@@ -1,4 +1,4 @@
-function [score, resultImage] = ObjectIdentifier(filename, colorMap, shapeMap)
+function [score, resultImage] = ObjectIdentifier(image, colorMap, shapeMap, colorWeight, shapeWeight)
 
 %hopefully house the colorMap and shapeMap but if a function stores it =>
 %data structure destroyed upon function call complete... need to add into
@@ -6,14 +6,22 @@ function [score, resultImage] = ObjectIdentifier(filename, colorMap, shapeMap)
 %shapeMap and use this to locate the object of our desire and add a box
 %around it with a given score.
 
-image = imread(filename);
-[h,w] = size(image);
+[h,w,dim] = size(image);
+[ch, cw, cd] = size(colorMap);
+[sh, sw, sd] = size(shapeMap);
+
+inputColorMap = ColorMap(image);
+colorScore = zeros(h,w);
+for i= 1:cd
+    colorScore = colorScore + imfilter(inputColorMap(:,:,i),colorMap(:,:,i), 'replicate');
+end
 
 %first score the image against the shape map
 
 %then score against the color map
+hit = colorWeight*colorScore;
 
-%sum the scores together to evaluat is hit found
+%sum the scores together to evaluate is hit found
 
 %return image with the hit boxed... only 1 hit per image for now...
 

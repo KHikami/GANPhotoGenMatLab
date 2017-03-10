@@ -98,36 +98,46 @@ set(handles.grayScalePhoto, 'Visible', 'on');
 %load the selected image (right now hardcoded to a photo in file) (but
 %should take in tFileName)
 ImToTrain = imread(tFileName);
+numOfKeysInMap = length(handles.data.objectIdentifierMemoryMap);
+
+isNewTrain = or(numOfKeysInMap == 0, ...
+    not(isKey(handles.data.objectIdentifierMemoryMap, tLabel)));
 
 startTime = now;
+
+if(isNewTrain)
+    colorMapToShow = ColorMap(ImToTrain);
+    shapeMapToShow = ShapeMap(ImToTrain);
+else
+    %should be the newly trained stuff...
+    origData = handles.data.objectIdentifierMemoryMap(tLabel);
+    
+    %identifyObject in new image & calculate score
+    %calculate features of the new image for label
+    colorMapToShow = ColorMap(ImToTrain);
+    shapeMapToShow = ShapeMap(ImToTrain);
+    
+    %backpropagate the error
+end
+
+
+endTime = now;
+timeForTrainRun = endTime - startTime;
 
 GrayScaleIm = rgb2gray(ImToTrain);
 axes(handles.grayScalePhoto);
 imshow(GrayScaleIm, []);
 
-%fill in the color map and shape map along with statistics for overall
-%process (Functions work on the small scale but won't work on the big
-%scale)
-
-%train first then display... if no previous map => direct display
-%otherwise train thend display latest color map and shape map
-ImColorMap = ColorMap(ImToTrain);
-PixelizedColorMap = Pixelize(ImColorMap);
+PixelizedColorMap = Pixelize(colorMapToShow);
 axes(handles.colorMapPhoto);
 imshow(PixelizedColorMap/255);
 
-ImShapeMap = ShapeMap(ImToTrain);
 axes(handles.shapeMapPhoto);
-imshow(ImShapeMap, []);
-
-endTime = now;
-timeForTrainRun = endTime - startTime;
-
-numOfKeysInMap = length(handles.data.objectIdentifierMemoryMap);
+imshow(shapeMapToShow, []);
 
 %if this label does not have a memory associated with it => create it
-if(or(numOfKeysInMap == 0, not(isKey(handles.data.objectIdentifierMemoryMap, tLabel))))
-    trainMem = ObjectIdentifierMemory(ImColorMap, ImShapeMap);
+if(isNewTrain)
+    trainMem = ObjectIdentifierMemory(colorMapToShow, shapeMapToShow);
 else
     %update the color and shape map to be a combo/corrected version
     trainMem = handles.data.objectIdentifierMemoryMap(tLabel);
@@ -136,9 +146,8 @@ end
 trainMem = trainMem.addIteration(timeForTrainRun);
 handles.data.objectIdentifierMemoryMap(tLabel) = trainMem;
 
-testLength = length(handles.data.objectIdentifierMemoryMap);
-
 set(handles.statusText, 'String', 'Image Training Complete');
+guidata(hObject,handles);
 
 function clearTrainResults(handles)
 cla(handles.colorMapPhoto);
@@ -196,9 +205,10 @@ responseText = 'Image Generation Complete';
 
 %grab respective train map if it exists...
 numOfTrainEntries = length(handles.data.objectIdentifierMemoryMap);
+noTrainData = or(numOfTrainEntries == 0, ...
+    not(isKey(handles.data.objectIdentifierMemoryMap,drawLabel)));
 
-if(or(numOfTrainEntries == 0, ...
-    not(isKey(handles.data.objectIdentifierMemoryMap,drawLabel))))
+if(noTrainData)
     responseText = 'Please train against label first before attempting to draw';
 else
     %re-activate or clear all the axes we don't want to use
@@ -211,30 +221,30 @@ else
     respectiveTrainMem = handles.data.objectIdentifierMemoryMap(drawLabel);
     trainColorMap = respectiveTrainMem.colorMap;
     trainShapeMap = respectiveTrainMem.shapeMap;
+    numOfIt = handles.data.numberOfIterations;
     
-    startTime = now;
-    ImToPaint = GenerateImage(testLabel);
-
-    endTime = now;
-    timeForRun = endTime-startTime;
-    %loops over the number of iterations and runs object identifier against the
-    %generated image. keeps memory of previous generated image if new generated
-    %image has a lower score than previous.
-
-    %might want to change painter memory to store per iteration the respective
-    %score...
-    numOfPainterEntries = length(handles.data.painterMemoryMap);
-    if(or(numOfPainterEntries == 0, ...
+    for i = 1:numOfIt
+        
+        startTime = now;
+        ImToPaint = GenerateImage(testLabel);
+        %objectIdentifier run against ImToPaint
+        endTime = now;
+        timeForRun = endTime-startTime;
+        %keeps memory of previous generated image if new generated
+        %image has a lower score than previous?
+        numOfPainterEntries = length(handles.data.painterMemoryMap);
+        if(or(numOfPainterEntries == 0, ...
             not(isKey(handles.data.painterMemoryMap, drawLabel))))
-        painterMem = PainterMemory(startV, score, timeForRun);
-    else
-        painterMem = handles.data.painterMemoryMap(drawLabel);
-        painterMem = updateBest(painterMem, startV, score);
-        painterMem = addIteration(painterMem,timeForRun, score);
+            painterMem = PainterMemory(startV, score, timeForRun);
+        else
+            painterMem = handles.data.painterMemoryMap(drawLabel);
+            painterMem = updateBest(painterMem, startV, score);
+            painterMem = addIteration(painterMem,timeForRun);
+        end
+
+        handles.data.painterMemoryMap(drawLabel) = painterMem;
     end
-
-    handles.data.painterMemoryMap(drawLabel) = painterMem;
-
+    
     axes(handles.paintedImagePhoto);
     imshow(ImToPaint, []);
     
@@ -251,10 +261,12 @@ else
     set(handles.avgGenTime, 'String', avgGen);
     set(handles.avgTrainTime, 'String', avgTrain);
     set(handles.avgDrawScore, 'String', avgScore);
+    
     handles.data.currentDrawMemory = painterMem;
 end
 
 set(handles.statusText, 'String', responseText); 
+guidata(hObject,handles);
 
 
 
@@ -571,6 +583,8 @@ if(or(numOfTrainEntries == 0, not(isKey(handles.data.objectIdentifierMemoryMap, 
     returnText = 'Please first train Object Identifier against label';
 else
     set(handles.identifiedObjectPhoto, 'Visible', 'on');
+    set(handles.identifyScoreButton,'Visible','on');
+    set(handles.identifyScoreButton, 'Enable','on');
     ImToIdentify = imread(image);
     axes(handles.identifiedObjectPhoto);
     imshow(ImToIdentify, []);
@@ -637,7 +651,7 @@ function statsButton_Callback(hObject, eventdata, handles)
 
 %can't be empty here
 drawingMemory = handles.data.currentDrawMemory;
-stats1 = ones(2,5);
+stats1 = reshape([1 2 3 4 5 6],2,3);
 stats2 = ones(2,3);
 stats3 = ones(2,6);
 stats4 = ones(2,8);
