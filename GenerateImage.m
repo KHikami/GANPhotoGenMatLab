@@ -1,6 +1,6 @@
 %will generate a painted image with a given label and call the object
 %identifier to check against it
 
-function [ Painting ] = GenerateImage(label)
+function [ Painting ] = GenerateImage(vector, score)
 
-Painting = imread(label);
+Painting;

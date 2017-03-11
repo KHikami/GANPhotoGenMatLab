@@ -133,7 +133,7 @@ handles.statsGraph1.YTick = yticks;
 stats2xval = handles.data.stats2Data(:,1);
 stats2yval = handles.data.stats2Data(:,2);
 axes(handles.statsGraph2);
-scatter(stats2xval,stats2yval);
+scatter(stats2xval,stats2yval, 'cyan', 'filled');
 title(handles.statsGraph2,'Painter Iterations vs Score');
 xlabel(handles.statsGraph2,'Iteration #');
 ylabel(handles.statsGraph2,'Score');
@@ -150,7 +150,7 @@ handles.statsGraph2.YTick = yticks;
 stats3xval = handles.data.stats3Data(:,1);
 stats3yval = handles.data.stats3Data(:,2);
 axes(handles.statsGraph3);
-scatter(stats3xval,stats3yval);
+scatter(stats3xval,stats3yval, 'magenta', 'filled');
 title(handles.statsGraph3,'Identifier Iterations vs Time');
 xlabel(handles.statsGraph3,'Iteration #');
 ylabel(handles.statsGraph3,'Time(s)');
@@ -167,7 +167,7 @@ handles.statsGraph3.YTick = yticks;
 stats4xval = handles.data.stats4Data(:,1);
 stats4yval = handles.data.stats4Data(:,2);
 axes(handles.statsGraph4);
-scatter(stats4xval,stats4yval);
+scatter(stats4xval,stats4yval, 'filled');
 title('Unknown');
 xlabel('Unknown');
 ylabel('Unknown');
@@ -190,9 +190,9 @@ function [minVal, maxVal] = getlimits(input)
 maxVal = max(input);
 minVal = min(input);
 if(minVal == maxVal)
-    minVal = maxVal-1;
+    minVal = maxVal-0.01;
 end
-maxVal = maxVal+1;
+maxVal = maxVal+0.01;
 
 % --- Outputs from this function are returned to the command line.
 function varargout = statsDialog_OutputFcn(hObject, eventdata, handles)

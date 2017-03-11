@@ -20,7 +20,7 @@ colorScore = zeros(size(inputColorMap,1),size(inputColorMap,2));
 %doesn't work upon different image! need to figure the filter issue...
 %apparently filter values have to add up to 0???
 for i= 1:cd
-    colorScore = colorScore + imfilter(inputColorMap(:,:,i),colorMap(:,:,i), 'conv');
+    colorScore = colorScore + imfilter(inputColorMap(:,:,i),colorMap(:,:,i), 'replicate');
     %imfilter has a conv feature as well but this one is weird in which it
     %keeps giving me positive numbers
     %colorScore = colorScore + inputColorMap(:,:,i) .* colorMap (:,:,i);
@@ -29,8 +29,8 @@ end
 %probably not the best normalization... considering that you will have a
 %value of 1... want to do a dot multiply between inputColorMap and colormap
 %despite differing shapes...
-colColorScore = reshape(colorScore, 1, size(inputColorMap,1)*size(inputColorMap,2));
-colorScore = colorScore/max(colColorScore); %have to normalize it
+colColorScore = size(inputColorMap,1)*size(inputColorMap,2);
+colorScore = colorScore/colColorScore; %have to normalize it
 
 %score the output of colorScore/pixelize(ColorMap()) against the shape map
 

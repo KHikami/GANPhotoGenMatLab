@@ -203,11 +203,7 @@ function draw_Callback(hObject, eventdata, handles)
 clearTrainResults(handles);
 clearIdentifyResults(handles);
 
-%returns the painted image generated (right now is just returning the photo
-%I already have on file)
-testLabel = 'GANPhotoGenMatLab\GoogleImages\GoogleVDay.jpg';
 drawLabel = handles.data.drawingLabel;
-startV = ones(1,3); %placeholder for the starting vector
 responseText = 'Image Generation Complete';
 
 %grab respective train map if it exists...
@@ -230,20 +226,29 @@ else
     trainShapeMap = respectiveTrainMem.shapeMap;
     numOfIt = handles.data.numberOfIterations;
     
+    numOfPainterEntries = length(handles.data.painterMemoryMap);
+    isNewPainting = or(numOfPainterEntries == 0, ...
+            not(isKey(handles.data.painterMemoryMap, drawLabel)));
+        
     for i = 1:numOfIt
         
+        if(isNewPainting)
+            startV = rand(100,1);
+            scoreToPropagate = 0;
+        else
+            startV = handles.data.painterMemoryMap(drawLabel).startingVector;
+            scoreToPropagate = handles.data.painterMemoryMap(drawLabel).averageScore;
+        end
         startTime = now;
-        ImToPaint = GenerateImage(testLabel);
+        ImToPaint = GenerateImage(startV, scoreToPropagate);
         %objectIdentifier run against ImToPaint (not too sure if we want to
         %use inClass for anything
-        [drawScore, ~, inClass] = ObjectIdentifier(ImToPaint, trainColorMap, trainShapeMap);
+        [drawScore, ~, ~] = ObjectIdentifier(ImToPaint, trainColorMap, trainShapeMap);
+        %feed into generator the avg. score of drawScore
         endTime = now;
         timeForRun = endTime-startTime;
-        %keeps memory of previous generated image if new generated
-        %image has a lower score than previous?
-        numOfPainterEntries = length(handles.data.painterMemoryMap);
-        if(or(numOfPainterEntries == 0, ...
-            not(isKey(handles.data.painterMemoryMap, drawLabel))))
+        
+        if(isNewPainting)
             painterMem = PainterMemory(startV, drawScore, timeForRun);
         else
             painterMem = handles.data.painterMemoryMap(drawLabel);
