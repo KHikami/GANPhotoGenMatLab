@@ -15,28 +15,29 @@ inputColorMap = ColorMap(image);
 colorScore = zeros(size(inputColorMap,1),size(inputColorMap,2));
 %score image against colormap (stored colormap is the color weight)
 
-%multiplying the input colormap against the orig color map... imfilter is
-%somehow giving me really big numbers...
-%doesn't work upon different image! need to figure the filter issue...
-%apparently filter values have to add up to 0???
+%had to normalize the input colormap... since max value is 1 for every spot
+%=> normalize by the number of 1 possible.
+colorFilter = zeros(ch,cw,cd);
+for i = 1:cd
+    numToDivideBy = size(colorMap(:,:,i),1)*size(colorMap(:,:,i),2);
+   %numToDivideBy = sum(reshape(colorMap(:,:,i),1, size(colorMap(:,:,i),1)*size(colorMap(:,:,i),2)));
+   if(numToDivideBy == 0)
+       numToDivideBy = 1;
+   end
+   colorFilter(:,:,i) = colorMap(:,:,i)/numToDivideBy;
+end
 for i= 1:cd
-    colorScore = colorScore + imfilter(inputColorMap(:,:,i),colorMap(:,:,i), 'replicate');
+    colorScore = colorScore + imfilter(inputColorMap(:,:,i),colorFilter(:,:,i), 'replicate');
     %imfilter has a conv feature as well but this one is weird in which it
     %keeps giving me positive numbers
     %colorScore = colorScore + inputColorMap(:,:,i) .* colorMap (:,:,i);
 end
 
-%probably not the best normalization... considering that you will have a
-%value of 1... want to do a dot multiply between inputColorMap and colormap
-%despite differing shapes...
-colColorScore = size(inputColorMap,1)*size(inputColorMap,2);
-colorScore = colorScore/colColorScore; %have to normalize it
-
 %score the output of colorScore/pixelize(ColorMap()) against the shape map
 
 %return image with the hit boxed... only 1 hit per image for now...
 
-threshold = 0.5;%to be tweaked as we go along... currently too low from results...
+threshold = 0.8;%to be tweaked as we go along... currently too low from results...
 score = colorScore;  %should get the result after shape Score calculated
 %right now setting it to colorScore
 
@@ -49,6 +50,7 @@ score = colorScore;  %should get the result after shape Score calculated
 %score will be the sub matrix of score for the boxed section
 
 topIndex = ind(1);
+box = [];
 if(val(1) >= threshold)
     position = (1:(size(score,1))*(size(score,2)));
     position = reshape(position, size(score,1), size(score,2));
