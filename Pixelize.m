@@ -1,13 +1,13 @@
 function [PixelImage] = Pixelize(colorMap)
 
-[origh,origw,origd] = size(colorMap);
+[origh,origw,~] = size(colorMap);
 
 %will store the rgb values per winning color
 compactVersion = zeros(origh,origw,3);
 
 for i = 1:origh
     for j = 1:origw
-        [maxvalue, maxColorIndex] = max(colorMap(i,j,:));
+        [~, maxColorIndex] = max(colorMap(i,j,:));
         switch(maxColorIndex)
             case 1 %White wins
                 compactVersion(i,j,1) = 255; 

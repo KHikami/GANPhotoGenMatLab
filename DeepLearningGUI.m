@@ -229,7 +229,8 @@ else
     numOfPainterEntries = length(handles.data.painterMemoryMap);
     isNewPainting = or(numOfPainterEntries == 0, ...
             not(isKey(handles.data.painterMemoryMap, drawLabel)));
-        
+    gen = handles.data.generator;
+    
     for i = 1:numOfIt
         
         if(isNewPainting)
@@ -240,7 +241,7 @@ else
             scoreToPropagate = handles.data.painterMemoryMap(drawLabel).averageScore;
         end
         startTime = now;
-        ImToPaint = GenerateImage(startV, scoreToPropagate);
+        ImToPaint = GenerateImage(gen, startV, scoreToPropagate);
         %objectIdentifier run against ImToPaint (not too sure if we want to
         %use inClass for anything
         [drawScore, ~, ~] = ObjectIdentifier(ImToPaint, trainColorMap, trainShapeMap);
@@ -306,6 +307,7 @@ handles.data.painterMemoryMap = containers.Map();
 handles.data.paintedScore = [];
 handles.data.identifiedScore = [];
 handles.data.currentDrawMemory = '';
+handles.data.generator = [];
 
 %holds the memories of the object identifier
 handles.data.objectIdentifierMemory = '';
