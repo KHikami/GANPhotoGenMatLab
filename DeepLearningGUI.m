@@ -121,8 +121,11 @@ else
     end
     
     %modify colormap and shape map to new stuff (backpropagate the error)
-    [newColorMap, newShapeMap] = TrainIdentifier(origData.colorMap, origData.shapeMap,...
-        ImToTrain, newDataScore);
+    %[newColorMap, newShapeMap] = TrainIdentifier(origData.colorMap, origData.shapeMap,...
+    %    ImToTrain, newDataScore);
+    
+    %temp place holder till we figure out the backpropagation
+    newColorMap = origData.colorMap; newShapeMap = origData.shapeMap;
     colorMapToShow = newColorMap;
     shapeMapToShow = newShapeMap;
 end

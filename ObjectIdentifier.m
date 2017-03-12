@@ -5,32 +5,55 @@ function [score, resultbox, hasObject] = ObjectIdentifier(image, colorMap, shape
 %DeepLearningGUI somewhere to store a map from label to the colorMap and
 %shapeMap and use this to locate the object of our desire and add a box
 %around it with a given score.
-h = size(image,1);
-w = size(image,2);
+
+[ih, iw, ~] = size(image);
 [ch, cw, cd] = size(colorMap);
 hasObject = 1;
 
 
 inputColorMap = ColorMap(image);
+
+[ich, icw, ~] = size(inputColorMap);
+%The color map and input will most likely have a slight difference or large
+%pad our original colormap such that where if the input is bigger => pad
+%with a 0 (we'll go through the NANs and turn them into 0s)
+%if input is smaller than colormap => pad input with zeros
+
+if(ich > ch)
+    %input bigger in row count
+    zerosRow = zeros(1,cw, 12); %appends the zeros for all dimensions
+    colorMap = [colorMap; repmat(zerosRow, [ich-ch 1])];
+else
+    %input smaller or equal in row count
+    zerosRow = zeros(1,icw,12);
+    matToAdd = repmat(zerosRow, [ch-ich 1]);
+    inputColorMap = [inputColorMap; matToAdd];
+end
+
+if(icw > cw)
+    %input bigger in col count
+    zerosCol = zeros(ch,1,12);
+    matToAdd = repmat(zerosCol, [1 icw-cw]);
+    colorMap = [colorMap matToAdd];
+else
+    %input smaller or equal in col count
+    zerosCol = zeros(ich,1,12);
+    inputColorMap = [inputColorMap repmat(zerosCol,[1 cw-icw])];
+end
+
+
+
 colorScore = zeros(size(inputColorMap,1),size(inputColorMap,2));
 %score image against colormap (stored colormap is the color weight)
-
-%had to normalize the input colormap... since max value is 1 for every spot
-%=> normalize by the number of 1 possible.
-colorFilter = zeros(ch,cw,cd);
-for i = 1:cd
-    numToDivideBy = size(colorMap(:,:,i),1)*size(colorMap(:,:,i),2);
-   %numToDivideBy = sum(reshape(colorMap(:,:,i),1, size(colorMap(:,:,i),1)*size(colorMap(:,:,i),2)));
-   if(numToDivideBy == 0)
-       numToDivideBy = 1;
-   end
-   colorFilter(:,:,i) = colorMap(:,:,i)/numToDivideBy;
-end
+%p(color at input) = input color map
+%p(color in target) = color map
+%we want to store the probability is target based on color at input given
+%right now storing p(color in input AND color in target)
+%color in target
 for i= 1:cd
-    colorScore = colorScore + imfilter(inputColorMap(:,:,i),colorFilter(:,:,i), 'replicate');
-    %imfilter has a conv feature as well but this one is weird in which it
-    %keeps giving me positive numbers
-    %colorScore = colorScore + inputColorMap(:,:,i) .* colorMap (:,:,i);
+    tempScores = inputColorMap(:,:,i) .* colorMap (:,:,i);
+    tempScores(isnan(tempScores))= 0;
+    colorScore = colorScore + tempScores;
 end
 
 %score the output of colorScore/pixelize(ColorMap()) against the shape map
@@ -43,15 +66,12 @@ score = colorScore;  %should get the result after shape Score calculated
 
 [val, ind] = sort(colorScore(:), 'descend');
 
-%we only want the topmost hit.
-%check if top hit is above threshold
-%if is => map to pixel coordinates & draw box in image
-%  return image with box
-%score will be the sub matrix of score for the boxed section
-
-topIndex = ind(1);
+%we check the median score => if greater than thresh more than 50% correct!
+middle = size(ind,1)/2;
+midIndex = ind(middle);
 box = [];
-if(val(1) >= threshold)
+
+if(val(midIndex) >= threshold)
     position = (1:(size(score,1))*(size(score,2)));
     position = reshape(position, size(score,1), size(score,2));
     [yblock, xblock] = find(position == topIndex);
@@ -70,8 +90,8 @@ if(val(1) >= threshold)
     %image but currently having the problem with imfilter)(gets cropped off
     %in axes mode...) Not much point to this right now since the compressed image
     %is stored in colormap...
-    boxwidth = max([cw*8-3 w-3]);
-    boxheight = max([ch*8-3 h-3]);
+    boxwidth = max([cw*8-3 iw-3]);
+    boxheight = max([ch*8-3 ih-3]);
     box = [xpixel ypixel boxwidth boxheight];
     
 else
