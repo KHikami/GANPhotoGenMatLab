@@ -52,6 +52,14 @@ newColorMap = zeros(nh,nw,numOfColors);
 
 origWeight = numOfTraining/(numOfTraining+1);
 newInputWeight = 1/(numOfTraining+1);
+
+%experimental weighting based on the amount of error: (doesn't look
+%great...new map gets huge amount of favor)
+%errorMatrix = thresholdMatrix - score;
+%[eh, ew] = size(errorMatrix);
+%avgError = sum(reshape(errorMatrix, 1, eh*ew))/(eh*ew);
+%origWeight = avgError/0.8;
+%newInputWeight = (0.8-avgError)/0.8;
 for i = 1:numOfColors
     newColorMap(:,:,i) = origWeight*origColorMap(:,:,i) + ...
     newInputWeight*(inputColorMap(:,:,i));

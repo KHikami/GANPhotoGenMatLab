@@ -45,6 +45,7 @@ score = colorScore;  %should get the result after shape Score calculated
 [val, ind] = sort(colorScore(:), 'descend');
 
 %we check the median score => if greater than thresh more than 50% correct!
+%could also check the average score => if greater than thresh, all good :)
 middle = size(ind,1)/2;
 midIndex = ind(middle);
 box = [];
