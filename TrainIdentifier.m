@@ -1,6 +1,6 @@
 function [newColorMap, newShapeMap] = TrainIdentifier( ...
     origColorMap, origShapeMap, targetImage,...
-    score)
+    score, numOfTraining)
 
 %this will hold backpropagation of the error for the object identifier
 %since our "ColorMap" and "ShapeMap" are our weights this will compute the
@@ -24,13 +24,13 @@ thresholdMatrix = thresholdMatrix*0.8;
 inputColorMap = ColorMap(targetImage);
 
 %colorMapDeriv should not be the last function...
-delta_2 = 2*(thresholdMatrix-score).*ones(sh,sw);
+%delta_2 = 2*(thresholdMatrix-score).*ones(sh,sw);
 
 %padding
 
 
 %need to pad orig color map and orig shape map to fit previous deltas
-delta_1 = ColorMapDeriv(inputColorMap).*origColorMap*delta_2;
+%delta_1 = ColorMapDeriv(inputColorMap).*origColorMap*delta_2;
 
 mu = 0.01; %filling in a random mu
 ro = 0.05; %filling in a random ro
@@ -40,7 +40,22 @@ ro = 0.05; %filling in a random ro
 
 %colorMap's new weight is origColorMap - mu*ro*origColorMap - mu*shapeMap
 %delta*ColorMap(input)
-newColorMap = origColorMap - mu*ro*origColorMap - mu*delta_2*inputColorMap;
+%newColorMap = origColorMap - mu*ro*origColorMap - mu*delta_2*inputColorMap;
+
+%temp Plan B solution for backprop for shape layer = average of the
+%training (not too sure how I want to account for the error)
+%probably instead of the average training weight be based on amount of
+%error?
+[origColorMap, inputColorMap] = PadInputs(origColorMap, inputColorMap);
+[nh, nw, numOfColors] = size(origColorMap);
+newColorMap = zeros(nh,nw,numOfColors);
+
+origWeight = numOfTraining/(numOfTraining+1);
+newInputWeight = 1/(numOfTraining+1);
+for i = 1:numOfColors
+    newColorMap(:,:,i) = origWeight*origColorMap(:,:,i) + ...
+    newInputWeight*(inputColorMap(:,:,i));
+end
 
 %is last layer...
 newShapeMap = origShapeMap;

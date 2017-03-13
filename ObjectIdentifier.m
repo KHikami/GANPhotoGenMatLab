@@ -13,34 +13,12 @@ hasObject = 1;
 
 inputColorMap = ColorMap(image);
 
-[ich, icw, ~] = size(inputColorMap);
 %The color map and input will most likely have a slight difference or large
 %pad our original colormap such that where if the input is bigger => pad
 %with a 0 (we'll go through the NANs and turn them into 0s)
-%if input is smaller than colormap => pad input with zeros
 
-if(ich > ch)
-    %input bigger in row count
-    zerosRow = zeros(1,cw, 12); %appends the zeros for all dimensions
-    colorMap = [colorMap; repmat(zerosRow, [ich-ch 1])];
-else
-    %input smaller or equal in row count
-    zerosRow = zeros(1,icw,12);
-    matToAdd = repmat(zerosRow, [ch-ich 1]);
-    inputColorMap = [inputColorMap; matToAdd];
-end
-
-if(icw > cw)
-    %input bigger in col count
-    zerosCol = zeros(ch,1,12);
-    matToAdd = repmat(zerosCol, [1 icw-cw]);
-    colorMap = [colorMap matToAdd];
-else
-    %input smaller or equal in col count
-    zerosCol = zeros(ich,1,12);
-    inputColorMap = [inputColorMap repmat(zerosCol,[1 cw-icw])];
-end
-
+%zeroPad function:
+[colorMap, inputColorMap] = PadInputs(colorMap, inputColorMap);
 
 
 colorScore = zeros(size(inputColorMap,1),size(inputColorMap,2));
@@ -74,8 +52,7 @@ box = [];
 if(val(midIndex) >= threshold)
     position = (1:(size(score,1))*(size(score,2)));
     position = reshape(position, size(score,1), size(score,2));
-    [yblock, xblock] = find(position == topIndex);
-    assert(val(1)==score(yblock,xblock));
+    [yblock, xblock] = find(position == midIndex);
 
     %since we scaled by 8 for our blocks => undoing the scale
     ypixel = yblock*8;
