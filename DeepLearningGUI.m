@@ -229,14 +229,12 @@ else
     trainColorMap = respectiveTrainMem.colorMap;
     trainShapeMap = respectiveTrainMem.shapeMap;
     numOfIt = handles.data.numberOfIterations;
-    
-    numOfPainterEntries = length(handles.data.painterMemoryMap);
-    isNewPainting = or(numOfPainterEntries == 0, ...
-            not(isKey(handles.data.painterMemoryMap, drawLabel)));
     gen = handles.data.generator;
     
     for i = 1:numOfIt
-        
+        numOfPainterEntries = length(handles.data.painterMemoryMap);
+        isNewPainting = or(numOfPainterEntries == 0, ...
+            not(isKey(handles.data.painterMemoryMap, drawLabel)));
         if(isNewPainting)
             startV = rand(100,1);
             scoreToPropagate = 0;
@@ -616,16 +614,17 @@ else
     
     if(inClass == 0)
         returnText = 'Target Object not identified';
+        deadImage = rgb2gray(ImToIdentify);
         axes(handles.identifiedObjectPhoto);
-        imshow(ImToIdentify, []);
+        imshow(deadImage, []);
     else
         axes(handles.identifiedObjectPhoto);
         imshow(ImToIdentify, []);
         
-        hold on;
-        h = rectangle('Position', identifyBox, 'EdgeColor', [1 0 0], ...
-        'LineWidth', 3);
-        hold off;
+        %hold on;
+        %h = rectangle('Position', identifyBox, 'EdgeColor', [1 0 0], ...
+        %'LineWidth', 3);
+        %hold off;
     end
     
     [sh, sw] = size(identifyScore);
@@ -699,7 +698,7 @@ stats1 = drawingMemory.iterationTimePlot;
 stats2 = drawingMemory.iterationScorePlot;
 trainMemory = handles.data.objectIdentifierMemoryMap(handles.data.drawingLabel);
 stats3 = trainMemory.iterationPlot;
-stats4 = ones(2,8);
+stats4 = handles.data.objectIdentifierMemoryMap;
 pos_size = get(handles.figure1, 'Position'); 
 statsDialog('Title', 'Painting Statistics', ...
     'statsGraph1', stats1, 'statsGraph2', stats2, 'statsGraph3', stats3, ...

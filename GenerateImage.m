@@ -3,4 +3,4 @@
 
 function [ Painting ] = GenerateImage(generator, vector, score)
 
-Painting;
+Painting = imread('GoogleImages/GoogleVDay.jpg');

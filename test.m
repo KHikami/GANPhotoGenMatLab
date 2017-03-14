@@ -1,7 +1,7 @@
 clear nn; 
-nn=neuralnetwork([100,40,10], 'tanh',3,'tanh',[0.2,0.05],0.5,-0.95,0);
- train_x = ones(100,1);
- train_y = ones(10,1);
+nn=neuralnetwork([100,40,1], 'tanh',3,'tanh',[0.2,0.05],0.5,-0.95,0);
+ train_x = rand(100,10);
+ train_y = rand(1,10);
  train_para = [1,1];
  ll= zeros(100,1);
  sparsity = zeros(100,1);

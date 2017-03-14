@@ -36,6 +36,7 @@ end
 
 %score the output of colorScore/pixelize(ColorMap()) against the shape map
 
+
 %return image with the hit boxed... only 1 hit per image for now...
 
 threshold = 0.8;%to be tweaked as we go along... currently too low from results...
@@ -70,7 +71,7 @@ if(val(midIndex) >= threshold)
     %is stored in colormap...
     boxwidth = max([cw*8-3 iw-3]);
     boxheight = max([ch*8-3 ih-3]);
-    box = [xpixel ypixel boxwidth boxheight];
+    %box = [xpixel ypixel boxwidth boxheight];
     
 else
     %value not high enough for detection => return fail...

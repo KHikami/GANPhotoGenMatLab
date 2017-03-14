@@ -125,7 +125,7 @@ ylabel(handles.statsGraph1,'Time(s)');
 [minYval,maxYval] = getlimits(stats1yval);
 handles.statsGraph1.XLim = [minXval maxXval];
 handles.statsGraph1.YLim =[minYval maxYval];
-xticks = 1:maxXval;
+xticks = 0:maxXval;
 handles.statsGraph1.XTick = xticks;
 yticks = linspace(minYval,maxYval,10);
 handles.statsGraph1.YTick = yticks;
@@ -142,7 +142,7 @@ ylabel(handles.statsGraph2,'Score');
 [minYval,maxYval] = getlimits(stats2yval);
 handles.statsGraph2.XLim = [minXval maxXval];
 handles.statsGraph2.YLim =[minYval maxYval];
-xticks = 1:maxXval;
+xticks = 0:maxXval;
 handles.statsGraph2.XTick = xticks;
 yticks = linspace(minYval,maxYval,10);
 handles.statsGraph2.YTick = yticks;
@@ -159,27 +159,27 @@ ylabel(handles.statsGraph3,'Time(s)');
 [minYval,maxYval] = getlimits(stats3yval);
 handles.statsGraph3.XLim = [minXval maxXval];
 handles.statsGraph3.YLim =[minYval maxYval];
-xticks = minXval:maxXval;
+xticks = 0:maxXval;
 handles.statsGraph3.XTick = xticks;
 yticks = linspace(minYval,maxYval,10);
 handles.statsGraph3.YTick = yticks;
 
-stats4xval = handles.data.stats4Data(:,1);
-stats4yval = handles.data.stats4Data(:,2);
-axes(handles.statsGraph4);
-scatter(stats4xval,stats4yval, 'filled');
-title('Unknown');
-xlabel('Unknown');
-ylabel('Unknown');
+stats4xval = handles.data.stats4Data.keys;
+numOfKeys = handles.data.stats4Data.length;
+stats4yval = zeros(numOfKeys,1);
 
-[minXval,maxXval] = getlimits(stats4xval);
-[minYval,maxYval] = getlimits(stats4yval);
-handles.statsGraph4.XLim = [minXval maxXval];
-handles.statsGraph4.YLim =[minYval maxYval];
-xticks = 1:maxXval;
-handles.statsGraph4.XTick = xticks;
-yticks = linspace(minYval,maxYval,10);
-handles.statsGraph4.YTick = yticks;
+for i = 1:numOfKeys
+    test = stats4xval{i};
+    valueToStore = handles.data.stats4Data(test).numOfIterations;
+    stats4yval(i) = valueToStore;
+end
+axes(handles.statsGraph4);
+xvals = categorical(stats4xval);
+bar(xvals,stats4yval);
+set(handles.statsGraph4, 'xticklabel', stats4xval);
+title('Training Data Amounts');
+xlabel('Labels');
+ylabel('Times Trained');
 
 % UIWAIT makes statsDialog wait for user response (see UIRESUME)
 uiwait(handles.figure1);
