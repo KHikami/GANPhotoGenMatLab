@@ -4,80 +4,51 @@ classdef Network < handle
     network_layers; % The layers of the neural network
     num_layers;     % The number of layers of the network
     
-    feature_dim;    % Dimension of the features
-    
-    layers_output;  % The output of each feature. Kept here for debugging.
-    
     cost_func;      % The cost function without the regularization
     cost_func_grad; % The gradient of the said cost function
-    reg_func;       % The type of regularization used.
-    reg_func_grad;  % The gradient fo the regularization function
-    reg_coeff;      % The regularization coefficient.
+    
+    reg_func;       % The regularization function
+    reg_func_grad;  % Regularization function's gradient
+    reg_coeff;      % The regularization coefficient
+    
   end;
   
   properties (GetAccess=private)
     reg_helper;
+    special;
   end;
   
   methods
-    function object = Network(feature_dim, cost_func, ...
-            cost_func_grad, reg_func, reg_func_grad, reg_coeff)
+    function object = Network(cost_func, cost_func_grad, reg_func, reg_func_grad, reg_coeff)
       % Initialize the object.
-      
-      object.feature_dim = feature_dim;
       object.cost_func = cost_func;
       object.cost_func_grad = cost_func_grad;
-      object.reg_func = reg_func;
-      object.reg_func_grad = reg_func_grad;
-      object.reg_coeff = reg_coeff;
       
       object.network_layers = cell(0);
       object.num_layers = 0;
       
-      object.reg_helper = @(w) sum(object.reg_func(w));
-    end;
-    
-    function add_fulllayer(this, input_dim, layer_dim, act, ...
-            act_grad, layer_name)
-      % Add a layer to the network. 
-      this.num_layers = this.num_layers + 1;
-      this.network_layers{this.num_layers} = FullLayer(input_dim, ...
-          layer_dim, act, act_grad, this.reg_func, ...
-          this.reg_func_grad, this.reg_coeff, layer_name);
-    end;
-    
-    function add_convlayer(this, input_dim, kernel_dim, layer_depth, ...
-        stride_size, act_func, act_func_grad, layer_name)
-      % Add a layer to the network. 
-      this.num_layers = this.num_layers + 1;
-      this.network_layers{this.num_layers} ...
-        = ConvLayer(input_dim, kernel_dim, layer_depth, ...
-        stride_size, act_func, act_func_grad, this.reg_func, ...
-        this.reg_func_grad, this.reg_coeff, layer_name);
-    end;
-    
-    function add_transconvlayer(this, input_dim, kernel_dim, layer_depth, ...
-        stride_size, act_func, act_func_grad, layer_name)
-      % Add a layer to the network. 
-      this.num_layers = this.num_layers + 1;
-      this.network_layers{this.num_layers} ...
-        = ConvLayer(input_dim, kernel_dim, layer_depth, ...
-        stride_size, act_func, act_func_grad, this.reg_func, ...
-        this.reg_func_grad, this.reg_coeff, layer_name, 'transpose');
-    end;
-    
-    function [output] = predict(this, input_val)
-        forward_val = input_val;
-      for l = 1:this.num_layers
-        this.layers_output{l} = compute_output(this.network_layers{l}, ...
-            forward_val);
-        forward_val = this.layers_output{l};
-      end;
+      object.reg_func = reg_func;
+      object.reg_func_grad = reg_func_grad;
+      object.reg_coeff = reg_coeff;
       
-      output = this.layers_output{this.num_layers};
+      object.reg_helper = @(w) sum(sum(object.reg_func(w)));
+    end;
+    
+    function add(this, layer)
+        this.num_layers = this.num_layers + 1;
+        this.network_layers{this.num_layers} = layer;
+    end;
+    
+    function layer_input = predict(this, input_val)
+      layer_input = cell(this.num_layers+1,1);
+      layer_input{1} = input_val;
+      for l = 1:this.num_layers
+        layer_input{l+1} = compute_output(this.network_layers{l}, ...
+            layer_input{l});
+      end;
     end;
   
-    function [output, cost] = fprop(this, input_val, label)
+    function [layer_input,  cost] = fprop(this, input_val, label)
       % Evalutes the neural network at input_val using forward propagation
       % Inputs:
       %   input_val: a tensor of dimension batch_size x dim_1 x dim_2 x
@@ -85,61 +56,66 @@ classdef Network < handle
       %   label: a tensor of dimension batch_size x dim_1' x dim_2' x
       %     dim_3' consists of the corresponding label
       % Outputs:
-      %   output: a matrix where each row corresponds to an output vector.
+      %   layer_input: a (num_layers+1)x1 cell containing the output of each layer.
       %   cost: the regularized cost of the network with input_val and
       %     label.
-      output = predict(this, input_val);
+      layer_input = predict(this, input_val);
+      output = layer_input{this.num_layers+1};
       
-      output_dim = size(output);
-      costs = zeros(output_dim(1),1);
-      parfor s=1:size(i,1)
-        costs(s) =  this.cost_func(reshape(output(s,:), output_dim(2:end)),...
-            reshape(label(s,:), output_dim(2:end)));
+      batch_size = size(input_val,1);
+      costs = zeros(batch_size,1);
+      cost_fun = this.cost_func;
+      for s=1:batch_size
+        costs(s) = cost_fun(shiftdim(output(s,:,:,:),1),shiftdim(label(s,:,:,:),1));
       end;
       cost = mean(costs) ...
           + this.reg_coeff * sum(cellfun(this.reg_helper, get_params(this)));
      end;
      
-    function [layers_grad_weight, layers_grad_bias] = bprop(this, ...
-             input_val, label)
-      % Evalutes the neural network's derivative with respect to the 
-      % parameters with data input_val using backward propagation
-      % Inputs:
-      %   input_val: a tensor of dimension batch_size x dim_1 x dim_2 x
-      %     dim_3 consists of the input data.
-      %   label: a tensor of dimension batch_size x dim_1' x dim_2' x
-      %     dim_3' consists of the corresponding label
-      % Outputs:
-      %   layers_weight_grad: a cell of length num_layers, with each entry 
-      %     being a a tensor containing the regularized cost function's 
-      %     stochastic gradient with respect to the weights in each layer. 
-      %   layers_bias_grad: a cell of length num_layers, with each entry 
-      %     being a a tensor containing the regularized cost function's 
-      %     stochastic gradient with respect to the biases in each layer.             
-      
-      [output_val, ~] = fprop(this, input_val, label);
-      output_dim = size(output_val);
-      back_grad = zeros(output_dim);
-      cost_grad = this.cost_func_grad;
-      parfor s=1:output_dim(1)
-        back_grad(s) = cost_grad(output_val(s,:,:,:), label(s,:,:,:));
-      end;
-      
-      for l = this.num_layers:-1:1
-        if l>1
-          [back_grad, layers_grad_weight{l}, layers_grad_bias{l}] ...
-              = update_grad(this.network_layers{l}, ...
-              this.layers_output{l-1}, back_grad);
+    function [layers_grad_weight, layers_grad_bias, grad_input] = bprop(this, ...
+             layer_input, label, special)
+        % Evalutes the neural network's derivative with respect to the 
+        % parameters with data input_val using backward propagation
+        % Inputs:
+        %   layer_input: a (num_layers+1)x1 cell soring the input to each
+        %   layer
+        %   label: a tensor of dimension batch_size x dim_1' x dim_2' x
+        %     dim_3' consists of the corresponding label
+        % Outputs:
+        %   layers_weight_grad: a cell of length num_layers, with each entry 
+        %     being a a tensor containing the regularized cost function's 
+        %     stochastic gradient with respect to the weights in each layer. 
+        %   layers_bias_grad: a cell of length num_layers, with each entry 
+        %     being a a tensor containing the regularized cost function's 
+        %     stochastic gradient with respect to the biases in each layer.             
+        batch_size = size(layer_input{1},1);
+
+        output_val = layer_input{this.num_layers+1};
+        output_dim = size(output_val);
+        back_grad = zeros(output_dim);
+        cost_grad = this.cost_func_grad;
+        if exist('special', 'var')
+          back_grad = cost_grad(nan, nan);
         else
-          [back_grad, layers_grad_weight{l}, layers_grad_bias{l}] ...
-              = update_grad(this.network_layers{l}, input_val, back_grad);
+          for s=1:batch_size
+            back_grad(s,:,:,:) = cost_grad(shiftdim(output_val(s,:,:,:),1), ...
+                shiftdim(label(s,:,:,:),1));
+          end;
+          back_grad = back_grad / batch_size;
         end;
-      end;
+
+        for l = this.num_layers:-1:1
+            [back_grad, layers_grad_weight{l}, layers_grad_bias{l}] ...
+                = compute_grad(this.network_layers{l}, layer_input{l}, back_grad);
+        end;
+        grad_input = back_grad;
      end;
      
-     function [cost, grad] = eval_at(this, input_val, label, weights, biases)
+     function [cost, grad, grad_input] = eval_at(this, input_val, label, weights, biases)
        % Set the parameters of the network to weights and biases and
-       % compute the outs and costs using input_val and label
+       % compute the outs and costs using input_val and label for a generic
+       % network. 
+       % DO NOT USE THIS FOR DCGAN.
        % Inputs:
        %   input_val: a tensor of dimension batch_size x dim_1 x dim_2 x
        %     dim_3 consists of the input data.
@@ -149,58 +125,119 @@ classdef Network < handle
        %     layer
        %   biases: a num_layers x 1 cell sotring the biases of each layer
        % Outputs:
-       %   output: a matrix where each row corresponds to an output vector.
        %   cost: the regularized cost of the network with input_val and
        %     label
-       if nargin==4
-           param_vector = weights;
-           weights = cell(this.num_layers,1);
-           biases = cell(this.num_layers,1);
-           idx = 1;
-           for l=1:this.num_layers
-             [weight_dim, bias_dim] = get_params_dim(this.network_layers{l});
-             length = prod(weight_dim);
-             weights{l} = reshape(param_vector(idx:idx+length-1), weight_dim);
-             idx = idx + length;
-             length = prod(bias_dim);
-             biases{l} = reshape(param_vector(idx:idx+length-1), bias_dim);
-             idx = idx + length;
+       if nargin ~= 3
+           if nargin==4
+               param_vector = weights;
+               [weights, biases] = paramvec2cells(this, param_vector);
            end;
+       
+         set_params(this, weights, biases);
        end;
        
-       set_params(this, weights, biases);
-       [~, cost ] = fprop(this, input_val, label);         
-       [grad_weights, grad_biases] = bprop(this, input_val, label);
+       [layer_input, cost] = fprop(this, input_val, label);         
+       [grad_weights, grad_biases, grad_input] = bprop(this, layer_input, label);
+       %batch_size = size(grad_input, 1);
+       %grad_input = grad_input/batch_size;
        
-       grad = zeros(get_num_params(this),1);
+       grad = paramcells2vec(this, grad_weights, grad_biases);
+     end;
+    
+     function [cost, grad, grad_fake_image_batch ]= gan_discriminate(this, real_image_batch, ...
+             fake_image_batch, param_vector)
+         % A special function for the discriminator of GAN.
+         batch_size = size(real_image_batch,1);
+         % First, set the parameters of the network
+         if exist('param_vector', 'var')
+           [weights, biases] = paramvec2cells(this, param_vector);
+           set_params(this, weights, biases);
+         end;
+         
+         epsilon = 10^-15;
+         
+         this.cost_func = @(p, label) -label.*log(p+epsilon) - (1-label).*log(1-p+epsilon);
+         this.cost_func_grad = @(p, label) -label./(p+epsilon) + (1-label)./(1-p+epsilon);
+         cost_grad
+         
+         % Recall that the cost function of gan discriminator is 
+         % log D(x) + log(1-D(G(z)). So we can divide it into two parts,
+         % one from the real image, and one from fake image
+         
+         % First the real image
+         epsilon = 10^-10;
+         this.cost_func = @(p, dummy_label) log(p+epsilon);
+         this.cost_func_grad = @(p, dummy_label) 1/(p+epsilon);
+         [real_cost, real_grad] = eval_at(this, real_image_batch, NaN(batch_size,1), param_vector);
+         % Then the fake image
+         this.cost_func = @(p, dummy_label) log(1-p+epsilon);
+         this.cost_func_grad = @(p, dummy_label) -1/(1-p+epsilon);
+         [fake_cost, fake_grad, grad_fake_image_batch] = ...
+             eval_at(this, fake_image_batch, NaN(batch_size,1), param_vector);
+
+         % Then combine the two contributions
+         cost = real_cost + fake_cost;
+         grad = real_grad + fake_grad;
+         cost = - cost;
+         grad = - grad;
+     end;
+     
+     function [cost, grad]= gan_generate(this, ...
+             seed_batch, discriminator, param_vector)
+         % A special function for the generator of GAN.
+         epsilon = 10^-10;
+         % First, set the parameters of the network
+         batch_size = size(seed_batch,1);
+         [weights, biases] = paramvec2cells(this, param_vector);
+         set_params(this, weights, biases);
+         
+         % Recall that the cost function of gan generator is 
+         % log(1-D(G(z)). So we can divide it into two parts,
+         % one for G, and one for D.
+         % First, we forward progate z to G(z)
+         layer_input = predict(this, seed_batch);
+         fake_image_batch = layer_input{this.num_layers+1};
+         % Then G(z) to log(1-D(G(z))
+         discriminator.cost_func = @(p, dummy_label) log(p+epsilon);
+         discriminator.cost_func_grad = @(p, dummy_label) 1/(p+epsilon);
+         [cost, ~, grad_fake_image_batch] = eval_at(discriminator, fake_image_batch, nan(batch_size,1));
+         % Then bprop the gradient
+         this.cost_func_grad = @(image, dummy_label) grad_fake_image_batch;
+         [layers_grad_weight, layers_grad_bias] = bprop(this, layer_input, ...
+             nan(batch_size,1), 'generative_special');
+         grad = paramcells2vec(this, layers_grad_weight, layers_grad_bias);
+         cost = - cost;
+         grad = - grad;
+     end;
+     
+     function [weights, biases] = paramvec2cells(this, param_vector)
+         weights = cell(this.num_layers,1);
+         biases = cell(this.num_layers,1);
+         idx = 1;
+         for l=1:this.num_layers
+           [weight_dim, bias_dim] = get_params_dim(this.network_layers{l});
+           length = prod(weight_dim);
+           weights{l} = reshape(param_vector(idx:idx+length-1), weight_dim);
+           idx = idx + length;
+           length = prod(bias_dim);
+           biases{l} = reshape(param_vector(idx:idx+length-1), bias_dim);
+           idx = idx + length;
+         end;
+     end;
+     
+     function paramvec = paramcells2vec(this, weights, biases)
+       paramvec = zeros(get_num_params(this),1);
        idx = 1;
        for l=1:this.num_layers
-         length = numel(grad_weights{l});
-         grad(idx:idx+length-1) = grad_weights{l}(:);
+         length = numel(weights{l});
+         paramvec(idx:idx+length-1) = weights{l}(:);
          idx = idx + length;
-         length = numel(grad_biases{l});
-         grad(idx:idx+length-1) = grad_biases{l}(:);
+         length = numel(biases{l});
+         paramvec(idx:idx+length-1) = biases{l}(:);
          idx = idx + length;
        end;
      end;
      
-     function cost = grad_descent(this, input_val, label, learning_rate)
-      % Perform one step of gradient desent the modify the weights and 
-      % biases to do gradient descent once.
-      % Inputs:
-      %   input_val: a tensor of dimension batch_size x dim_1 x dim_2 x
-      %     dim_3 consists of the input data.
-      %   label: a tensor of dimension batch_size x dim_1' x dim_2' x
-      %     dim_3' consists of the corresponding label
-      %   learning_rate: a scalar specifying the learning rate
-      
-      bprop(this, input_val, label);
-      for l = 1:this.num_layers
-        descent(this.network_layers{l}, learning_rate);
-      end;
-      [~, cost] = fprop(this, input_val, label);
-     end;
-  
      function [weight, bias] = get_params(this)
          % Get the weights and bias of each layer
          weight = cell(this.num_layers, 1);
@@ -214,7 +251,7 @@ classdef Network < handle
          num_params = 0;
          [weight, bias] = get_params(this);
          for l=1:this.num_layers
-             num_params = num_params + numel(weight{l}) + numel(bias(l));
+             num_params = num_params + numel(weight{l}) + numel(bias{l});
          end;
      end;
      
@@ -222,16 +259,6 @@ classdef Network < handle
          % Set the weights and bias of each layer
          for l =1:this.num_layers
              set_params(this.network_layers{l}, weight{l}, bias{l})
-         end;
-     end;
-     
-     function [grad_weight, grad_bias] = get_grad(this)
-         % Get the gradient with respect to the weight and bias of each 
-         % layer
-         grad_weight = cell(this.num_layers, 1);
-         grad_bias = cell(this.num_layers, 1);
-         for l =1:this.num_layers
-             [grad_weight{l}, grad_bias{l}] = get_grad(this.network_layers{l});
          end;
      end;
   end; 

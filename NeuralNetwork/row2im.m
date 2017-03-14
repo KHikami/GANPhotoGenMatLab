@@ -2,6 +2,9 @@ function image = row2im(rows, window_size, image_size, step_size)
 % The transposed operation of im2row. Again, same zero padding is assumed.
 
 % Preallocate memory for the image
+if length(image_size)==2
+    image_size = [image_size, 1];
+end;
 padded_image = zeros(image_size+[window_size-1, 0]);
 h_step = step_size(1);
 w_step = step_size(2);
